@@ -304,7 +304,7 @@ int gcoap_cli_cmd(int argc, char **argv) {
         }
     }
 
-    if (argc == 1 || /*code_pos == -1*/) {
+    if (argc == 1 || code_pos == -1) {
         /* show help for main commands */
 
         printf("usage: %s <get|post|put|ping|proxy|info>\n", argv[0]);

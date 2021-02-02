@@ -1,8 +1,7 @@
 #!/bin/bash
 
-cd server
-
 sudo ./RIOT/dist/tools/tapsetup/tapsetup -c 2
 
+cd server
 make all
 PORT=tap0 make term
