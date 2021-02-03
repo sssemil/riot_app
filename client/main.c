@@ -4,6 +4,7 @@
 #include "net/gcoap.h"
 #include "net/sock.h"
 #include "net/netif.h"
+#include "benchmark.h"
 
 void print_iface(netif_t *iface)
 {
@@ -83,6 +84,14 @@ int main(void)
     bytes_sent = gcoap_req_send((uint8_t *)pdu.hdr, len, remote,
                                 NULL, NULL);
     printf("bytes_sent: %i\n", bytes_sent);
+
+    /*unsigned long runs = 10000;
+    uint32_t _benchmark_time = xtimer_now_usec();
+    for (unsigned long i = 0; i < runs; i++)
+    {
+    }
+    _benchmark_time = (xtimer_now_usec() - _benchmark_time);
+    benchmark_print_time(_benchmark_time, runs, "coap_send");*/
 
     return 0;
 }
