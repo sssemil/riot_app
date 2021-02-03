@@ -28,7 +28,6 @@
 #include "fmt.h"
 
 #define ENABLE_DEBUG 0
-
 #include "debug.h"
 
 static bool _proxied = false;
@@ -37,31 +36,28 @@ static char proxy_uri[64];
 
 static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
                             size_t maxlen, coap_link_encoder_ctx_t *context);
-
-static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
+static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t* pdu,
                           const sock_udp_ep_t *remote);
-
-static ssize_t _stats_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx);
-
-static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx);
+static ssize_t _stats_handler(coap_pkt_t* pdu, uint8_t *buf, size_t len, void *ctx);
+static ssize_t _riot_board_handler(coap_pkt_t* pdu, uint8_t *buf, size_t len, void *ctx);
 
 /* CoAP resources. Must be sorted by path (ASCII order). */
 static const coap_resource_t _resources[] = {
-        {"/cli/stats",  COAP_GET | COAP_PUT, _stats_handler,      NULL},
-        {"/riot/board", COAP_GET,            _riot_board_handler, NULL},
+    { "/cli/stats", COAP_GET | COAP_PUT, _stats_handler, NULL },
+    { "/riot/board", COAP_GET, _riot_board_handler, NULL },
 };
 
 static const char *_link_params[] = {
-        ";ct=0;rt=\"count\";obs",
-        NULL
+    ";ct=0;rt=\"count\";obs",
+    NULL
 };
 
 static gcoap_listener_t _listener = {
-        &_resources[0],
-        ARRAY_SIZE(_resources),
-        _encode_link,
-        NULL,
-        NULL
+    &_resources[0],
+    ARRAY_SIZE(_resources),
+    _encode_link,
+    NULL,
+    NULL
 };
 
 /* Retain request path to re-request if response includes block. User must not
@@ -79,9 +75,9 @@ static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
     ssize_t res = gcoap_encode_link(resource, buf, maxlen, context);
     if (res > 0) {
         if (_link_params[context->link_pos]
-            && (strlen(_link_params[context->link_pos]) < (maxlen - res))) {
+                && (strlen(_link_params[context->link_pos]) < (maxlen - res))) {
             if (buf) {
-                memcpy(buf + res, _link_params[context->link_pos],  
+                memcpy(buf+res, _link_params[context->link_pos],
                        strlen(_link_params[context->link_pos]));
             }
             return res + strlen(_link_params[context->link_pos]);
@@ -94,14 +90,16 @@ static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
 /*
  * Response callback.
  */
-static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
-                          const sock_udp_ep_t *remote) {
-    (void) remote;       /* not interested in the source currently */
+static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t* pdu,
+                          const sock_udp_ep_t *remote)
+{
+    (void)remote;       /* not interested in the source currently */
 
     if (memo->state == GCOAP_MEMO_TIMEOUT) {
         printf("gcoap: timeout for msg ID %02u\n", coap_get_id(pdu));
         return;
-    } else if (memo->state == GCOAP_MEMO_ERR) {
+    }
+    else if (memo->state == GCOAP_MEMO_ERR) {
         printf("gcoap: error in response\n");
         return;
     }
@@ -112,24 +110,26 @@ static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
     }
 
     char *class_str = (coap_get_code_class(pdu) == COAP_CLASS_SUCCESS)
-                      ? "Success" : "Error";
+                            ? "Success" : "Error";
     printf("gcoap: response %s, code %1u.%02u", class_str,
-           coap_get_code_class(pdu),
-           coap_get_code_detail(pdu));
+                                                coap_get_code_class(pdu),
+                                                coap_get_code_detail(pdu));
     if (pdu->payload_len) {
         unsigned content_type = coap_get_content_type(pdu);
         if (content_type == COAP_FORMAT_TEXT
-            || content_type == COAP_FORMAT_LINK
-            || coap_get_code_class(pdu) == COAP_CLASS_CLIENT_FAILURE
-            || coap_get_code_class(pdu) == COAP_CLASS_SERVER_FAILURE) {
+                || content_type == COAP_FORMAT_LINK
+                || coap_get_code_class(pdu) == COAP_CLASS_CLIENT_FAILURE
+                || coap_get_code_class(pdu) == COAP_CLASS_SERVER_FAILURE) {
             /* Expecting diagnostic payload in failure cases */
             printf(", %u bytes\n%.*s\n", pdu->payload_len, pdu->payload_len,
-                   (char *) pdu->payload);
-        } else {
+                                                          (char *)pdu->payload);
+        }
+        else {
             printf(", %u bytes\n", pdu->payload_len);
             od_hex_dump(pdu->payload, pdu->payload_len, OD_WIDTH_DEFAULT);
         }
-    } else {
+    }
+    else {
         printf(", empty payload\n");
     }
 
@@ -143,10 +143,11 @@ static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
             }
 
             if (_proxied) {
-                gcoap_req_init(pdu, (uint8_t *) pdu->hdr, CONFIG_GCOAP_PDU_BUF_SIZE,
+                gcoap_req_init(pdu, (uint8_t *)pdu->hdr, CONFIG_GCOAP_PDU_BUF_SIZE,
                                COAP_METHOD_GET, NULL);
-            } else {
-                gcoap_req_init(pdu, (uint8_t *) pdu->hdr, CONFIG_GCOAP_PDU_BUF_SIZE,
+            }
+            else {
+                gcoap_req_init(pdu, (uint8_t *)pdu->hdr, CONFIG_GCOAP_PDU_BUF_SIZE,
                                COAP_METHOD_GET, _last_req_path);
             }
 
@@ -161,9 +162,10 @@ static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
             }
 
             int len = coap_opt_finish(pdu, COAP_OPT_FINISH_NONE);
-            gcoap_req_send((uint8_t *) pdu->hdr, len, remote,
+            gcoap_req_send((uint8_t *)pdu->hdr, len, remote,
                            _resp_handler, memo->context);
-        } else {
+        }
+        else {
             puts("--- blockwise complete ---");
         }
     }
@@ -177,8 +179,9 @@ static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
  *      allows any two byte value for example purposes. Semantically, the only
  *      valid action is to set the value to 0.
  */
-static ssize_t _stats_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx) {
-    (void) ctx;
+static ssize_t _stats_handler(coap_pkt_t* pdu, uint8_t *buf, size_t len, void *ctx)
+{
+    (void)ctx;
 
     /* read coap method type in packet */
     unsigned method_flag = coap_method2flag(coap_get_code_detail(pdu));
@@ -190,18 +193,19 @@ static ssize_t _stats_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *c
             size_t resp_len = coap_opt_finish(pdu, COAP_OPT_FINISH_PAYLOAD);
 
             /* write the response buffer with the request count value */
-            resp_len += fmt_u16_dec((char *) pdu->payload, req_count);
+            resp_len += fmt_u16_dec((char *)pdu->payload, req_count);
             return resp_len;
 
         case COAP_PUT:
             /* convert the payload to an integer and update the internal
                value */
             if (pdu->payload_len <= 5) {
-                char payload[6] = {0};
-                memcpy(payload, (char *) pdu->payload, pdu->payload_len);
-                req_count = (uint16_t) strtoul(payload, NULL, 10);
+                char payload[6] = { 0 };
+                memcpy(payload, (char *)pdu->payload, pdu->payload_len);
+                req_count = (uint16_t)strtoul(payload, NULL, 10);
                 return gcoap_response(pdu, buf, len, COAP_CODE_CHANGED);
-            } else {
+            }
+            else {
                 return gcoap_response(pdu, buf, len, COAP_CODE_BAD_REQUEST);
             }
     }
@@ -209,8 +213,9 @@ static ssize_t _stats_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *c
     return 0;
 }
 
-static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx) {
-    (void) ctx;
+static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
+{
+    (void)ctx;
     gcoap_resp_init(pdu, buf, len, COAP_CODE_CONTENT);
     coap_opt_add_format(pdu, COAP_FORMAT_TEXT);
     size_t resp_len = coap_opt_finish(pdu, COAP_OPT_FINISH_PAYLOAD);
@@ -219,14 +224,16 @@ static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, vo
     if (pdu->payload_len >= strlen(RIOT_BOARD)) {
         memcpy(pdu->payload, RIOT_BOARD, strlen(RIOT_BOARD));
         return resp_len + strlen(RIOT_BOARD);
-    } else {
+    }
+    else {
         puts("gcoap_cli: msg buffer too small");
         return gcoap_response(pdu, buf, len, COAP_CODE_INTERNAL_SERVER_ERROR);
     }
 }
 
 static bool _parse_endpoint(sock_udp_ep_t *remote,
-                            char *addr_str, char *port_str) {
+                            char *addr_str, char *port_str)
+{
     ipv6_addr_t addr;
     remote->family = AF_INET6;
 
@@ -235,11 +242,13 @@ static bool _parse_endpoint(sock_udp_ep_t *remote,
     if (!iface) {
         if (gnrc_netif_numof() == 1) {
             /* assign the single interface found in gnrc_netif_numof() */
-            remote->netif = (uint16_t) gnrc_netif_iter(NULL)->pid;
-        } else {
+            remote->netif = (uint16_t)gnrc_netif_iter(NULL)->pid;
+        }
+        else {
             remote->netif = SOCK_ADDR_ANY_NETIF;
         }
-    } else {
+    }
+    else {
         int pid = atoi(iface);
         if (gnrc_netif_get_by_pid(pid) == NULL) {
             puts("gcoap_cli: interface not valid");
@@ -268,14 +277,16 @@ static bool _parse_endpoint(sock_udp_ep_t *remote,
     return true;
 }
 
-static size_t _send(uint8_t *buf, size_t len, char *addr_str, char *port_str) {
+static size_t _send(uint8_t *buf, size_t len, char *addr_str, char *port_str)
+{
     size_t bytes_sent;
     sock_udp_ep_t *remote;
     sock_udp_ep_t new_remote;
 
     if (_proxied) {
         remote = &_proxy_remote;
-    } else {
+    }
+    else {
         if (!_parse_endpoint(&new_remote, addr_str, port_str)) {
             return 0;
         }
@@ -289,26 +300,17 @@ static size_t _send(uint8_t *buf, size_t len, char *addr_str, char *port_str) {
     return bytes_sent;
 }
 
-int gcoap_cli_cmd(int argc, char **argv) {
+int gcoap_cli_cmd(int argc, char **argv)
+{
     /* Ordered like the RFC method code numbers, but off by 1. GET is code 0. */
     char *method_codes[] = {"ping", "get", "post", "put"};
     uint8_t buf[CONFIG_GCOAP_PDU_BUF_SIZE];
     coap_pkt_t pdu;
     size_t len;
 
-    /* if not 'info' and 'proxy', must be a method code or ping */
-    int code_pos = -1;
-    for (size_t i = 0; i < ARRAY_SIZE(method_codes); i++) {
-        if (strcmp(argv[1], method_codes[i]) == 0) {
-            code_pos = i;
-        }
-    }
-
-    if (argc == 1 || code_pos == -1) {
+    if (argc == 1) {
         /* show help for main commands */
-
-        printf("usage: %s <get|post|put|ping|proxy|info>\n", argv[0]);
-        return 1;
+        goto end;
     }
 
     if (strcmp(argv[1], "info") == 0) {
@@ -322,14 +324,16 @@ int gcoap_cli_cmd(int argc, char **argv) {
             char addrstr[IPV6_ADDR_MAX_STR_LEN];
             printf("[%s]:%u\n",
                    ipv6_addr_to_str(addrstr,
-                                    (ipv6_addr_t * ) & _proxy_remote.addr.ipv6,
+                                    (ipv6_addr_t *) &_proxy_remote.addr.ipv6,
                                     sizeof(addrstr)),
                    _proxy_remote.port);
-        } else {
+        }
+        else {
             puts("None");
         }
         return 0;
-    } else if (strcmp(argv[1], "proxy") == 0) {
+    }
+    else if (strcmp(argv[1], "proxy") == 0) {
         if ((argc == 5) && (strcmp(argv[2], "set") == 0)) {
             if (!_parse_endpoint(&_proxy_remote, argv[3], argv[4])) {
                 puts("Could not set proxy");
@@ -346,6 +350,17 @@ int gcoap_cli_cmd(int argc, char **argv) {
         printf("usage: %s proxy set <addr>[%%iface] <port>\n", argv[0]);
         printf("       %s proxy unset\n", argv[0]);
         return 1;
+    }
+
+    /* if not 'info' and 'proxy', must be a method code or ping */
+    int code_pos = -1;
+    for (size_t i = 0; i < ARRAY_SIZE(method_codes); i++) {
+        if (strcmp(argv[1], method_codes[i]) == 0) {
+            code_pos = i;
+        }
+    }
+    if (code_pos == -1) {
+        goto end;
     }
 
     /* parse options */
@@ -365,16 +380,17 @@ int gcoap_cli_cmd(int argc, char **argv) {
         char *uri = NULL;
         int uri_len = 0;
         if (code_pos) {
-            uri = argv[apos + 2];
-            uri_len = strlen(argv[apos + 2]);
+            uri = argv[apos+2];
+            uri_len = strlen(argv[apos+2]);
         }
 
         if (_proxied) {
-            uri_len = snprintf(proxy_uri, 64, "coap://[%s]:%s%s", argv[apos], argv[apos + 1], uri);
+            uri_len = snprintf(proxy_uri, 64, "coap://[%s]:%s%s", argv[apos], argv[apos+1], uri);
             uri = proxy_uri;
 
             gcoap_req_init(&pdu, &buf[0], CONFIG_GCOAP_PDU_BUF_SIZE, code_pos, NULL);
-        } else {
+        }
+        else{
             gcoap_req_init(&pdu, &buf[0], CONFIG_GCOAP_PDU_BUF_SIZE, code_pos, uri);
         }
         coap_hdr_set_type(pdu.hdr, msg_type);
@@ -384,7 +400,7 @@ int gcoap_cli_cmd(int argc, char **argv) {
             memcpy(_last_req_path, uri, uri_len);
         }
 
-        size_t paylen = (argc == apos + 4) ? strlen(argv[apos + 3]) : 0;
+        size_t paylen = (argc == apos + 4) ? strlen(argv[apos+3]) : 0;
         if (paylen) {
             coap_opt_add_format(&pdu, COAP_FORMAT_TEXT);
         }
@@ -396,41 +412,45 @@ int gcoap_cli_cmd(int argc, char **argv) {
         if (paylen) {
             len = coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
             if (pdu.payload_len >= paylen) {
-                memcpy(pdu.payload, argv[apos + 3], paylen);
+                memcpy(pdu.payload, argv[apos+3], paylen);
                 len += paylen;
-            } else {
+            }
+            else {
                 puts("gcoap_cli: msg buffer too small");
                 return 1;
             }
-        } else {
+        }
+        else {
             len = coap_opt_finish(&pdu, COAP_OPT_FINISH_NONE);
         }
 
         printf("gcoap_cli: sending msg ID %u, %u bytes\n", coap_get_id(&pdu),
                (unsigned) len);
-        if (!_send(&buf[0], len, argv[apos], argv[apos + 1])) {
+        if (!_send(&buf[0], len, argv[apos], argv[apos+1])) {
             puts("gcoap_cli: msg send failed");
-        } else {
+        }
+        else {
             /* send Observe notification for /cli/stats */
             switch (gcoap_obs_init(&pdu, &buf[0], CONFIG_GCOAP_PDU_BUF_SIZE,
-                                   &_resources[0])) {
-                case GCOAP_OBS_INIT_OK:
-                    DEBUG("gcoap_cli: creating /cli/stats notification\n");
-                    coap_opt_add_format(&pdu, COAP_FORMAT_TEXT);
-                    len = coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
-                    len += fmt_u16_dec((char *) pdu.payload, req_count);
-                    gcoap_obs_send(&buf[0], len, &_resources[0]);
-                    break;
-                case GCOAP_OBS_INIT_UNUSED:
-                    DEBUG("gcoap_cli: no observer for /cli/stats\n");
-                    break;
-                case GCOAP_OBS_INIT_ERR:
-                    DEBUG("gcoap_cli: error initializing /cli/stats notification\n");
-                    break;
+                    &_resources[0])) {
+            case GCOAP_OBS_INIT_OK:
+                DEBUG("gcoap_cli: creating /cli/stats notification\n");
+                coap_opt_add_format(&pdu, COAP_FORMAT_TEXT);
+                len = coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
+                len += fmt_u16_dec((char *)pdu.payload, req_count);
+                gcoap_obs_send(&buf[0], len, &_resources[0]);
+                break;
+            case GCOAP_OBS_INIT_UNUSED:
+                DEBUG("gcoap_cli: no observer for /cli/stats\n");
+                break;
+            case GCOAP_OBS_INIT_ERR:
+                DEBUG("gcoap_cli: error initializing /cli/stats notification\n");
+                break;
             }
         }
         return 0;
-    } else {
+    }
+    else {
         printf("usage: %s <get|post|put> [-c] <addr>[%%iface] <port> <path> [data]\n",
                argv[0]);
         printf("       %s ping <addr>[%%iface] <port>\n", argv[0]);
@@ -438,8 +458,13 @@ int gcoap_cli_cmd(int argc, char **argv) {
         printf("    -c  Send confirmably (defaults to non-confirmable)\n");
         return 1;
     }
+
+    end:
+    printf("usage: %s <get|post|put|ping|proxy|info>\n", argv[0]);
+    return 1;
 }
 
-void gcoap_cli_init(void) {
+void gcoap_cli_init(void)
+{
     gcoap_register_listener(&_listener);
 }
