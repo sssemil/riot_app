@@ -8,7 +8,7 @@
 #include "net/netif.h"
 #include "benchmark.h"
 
-#define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 4
+#define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 16
 
 void print_iface(netif_t *iface)
 {
@@ -98,25 +98,18 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
         usleep(10 * 1000);
     }
 
-    /*unsigned long runs = 10000;
-    uint32_t _benchmark_time = xtimer_now_usec();
-    for (unsigned long i = 0; i < runs; i++)
-    {
-    }
-    _benchmark_time = (xtimer_now_usec() - _benchmark_time);
-    benchmark_print_time(_benchmark_time, runs, "coap_send");*/
-
     return _benchmark_time_sum;
 }
 
 int main(void)
 {
+    printf("======================================================================\n");
     char *server_addr_str = "fe80::200:ff:fe00:ab";
 
     size_t runs = 10000;
     uint32_t _benchmark_time_sum;
 
-    for (size_t payload_length = 16; payload_length <= 256; payload_length *= 4)
+    for (size_t payload_length = 16; payload_length <= 1024; payload_length *= 4)
     {
         printf("payload_length: %i\n", payload_length);
         _benchmark_time_sum = gcoap_test0(server_addr_str, payload_length, runs);
