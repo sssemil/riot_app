@@ -1,10 +1,14 @@
 #include <stdio.h>
+#include <unistd.h>
+
 #include "msg.h"
 
 #include "net/gcoap.h"
 #include "net/sock.h"
 #include "net/netif.h"
 #include "benchmark.h"
+
+#define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 4
 
 void print_iface(netif_t *iface)
 {
@@ -22,12 +26,9 @@ void print_iface(netif_t *iface)
     }
 }
 
-int main(void)
+int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
 {
-
     // build request net layer
-    char *addr_str = "fe80::200:ff:fe00:ab";
-    size_t bytes_sent;
     sock_udp_ep_t remote_mem;
     sock_udp_ep_t *remote = &remote_mem;
     ipv6_addr_t addr;
@@ -46,7 +47,7 @@ int main(void)
         return -1;
     }
 
-    if (ipv6_addr_from_str(&addr, addr_str) == NULL)
+    if (ipv6_addr_from_str(&addr, server_addr_str) == NULL)
     {
         printf("gcoap_client: unable to parse destination address\n");
         return -1;
@@ -54,12 +55,12 @@ int main(void)
     memcpy(&remote->addr.ipv6[0], &addr.u8[0], sizeof(addr.u8));
 
     // build request app layer
-    uint8_t buf[CONFIG_GCOAP_PDU_BUF_SIZE];
+    uint8_t buf[GCOAP_PDU_BUF_SIZE];
     coap_pkt_t pdu;
     size_t len;
     char path[] = "/.well-known/core";
 
-    len = gcoap_req_init(&pdu, &buf[0], CONFIG_GCOAP_PDU_BUF_SIZE,
+    len = gcoap_req_init(&pdu, &buf[0], GCOAP_PDU_BUF_SIZE,
                          COAP_METHOD_GET, &path[0]);
 
     printf("len: %i\n", len);
@@ -69,21 +70,33 @@ int main(void)
     len += coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
     printf("len new: %i\n", len);
 
-    char *payload = "1234567890abcdef";
-    size_t paylen = strlen(payload);
-    if (pdu.payload_len >= paylen)
+    char payload[payload_length];
+    memset(payload, 'a', payload_length);
+    payload[payload_length - 1] = 0;
+    //size_t paylen = strlen(payload);
+    if (pdu.payload_len >= payload_length)
     {
-        memcpy(pdu.payload, payload, paylen);
-        len += paylen;
+        memcpy(pdu.payload, payload, payload_length);
+        len += payload_length;
     }
     else
     {
         printf("gcoap_cli: msg buffer too small\n");
         return 1;
     }
-    bytes_sent = gcoap_req_send((uint8_t *)pdu.hdr, len, remote,
-                                NULL, NULL);
-    printf("bytes_sent: %i\n", bytes_sent);
+
+    uint32_t _benchmark_time;
+    uint32_t _benchmark_time_sum = 0;
+    for (unsigned long i = 0; i < runs; i++)
+    {
+        _benchmark_time = xtimer_now_usec();
+        gcoap_req_send((uint8_t *)pdu.hdr, len, remote,
+                       NULL, NULL);
+        _benchmark_time = (xtimer_now_usec() - _benchmark_time);
+        _benchmark_time_sum += _benchmark_time;
+        //printf("bytes_sent: %i\n", bytes_sent);
+        usleep(10 * 1000);
+    }
 
     /*unsigned long runs = 10000;
     uint32_t _benchmark_time = xtimer_now_usec();
@@ -92,6 +105,23 @@ int main(void)
     }
     _benchmark_time = (xtimer_now_usec() - _benchmark_time);
     benchmark_print_time(_benchmark_time, runs, "coap_send");*/
+
+    return _benchmark_time_sum;
+}
+
+int main(void)
+{
+    char *server_addr_str = "fe80::200:ff:fe00:ab";
+
+    size_t runs = 10000;
+    uint32_t _benchmark_time_sum;
+
+    for (size_t payload_length = 16; payload_length <= 256; payload_length *= 4)
+    {
+        printf("payload_length: %i\n", payload_length);
+        _benchmark_time_sum = gcoap_test0(server_addr_str, payload_length, runs);
+        benchmark_print_time(_benchmark_time_sum, runs, "coap_send");
+    }
 
     return 0;
 }
