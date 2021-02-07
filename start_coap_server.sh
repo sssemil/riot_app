@@ -2,6 +2,6 @@
 
 ./setup_iface.sh
 
-cd server
+cd src/coap/server
 make all
 PORT=tap0 make term
