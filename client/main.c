@@ -33,6 +33,7 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
     sock_udp_ep_t *remote = &remote_mem;
     ipv6_addr_t addr;
     remote->family = AF_INET6;
+    remote->port = CONFIG_GCOAP_PORT;
 
     netif_t *iface = NULL;
 
@@ -58,14 +59,15 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
     uint8_t buf[GCOAP_PDU_BUF_SIZE];
     coap_pkt_t pdu;
     size_t len;
-    char path[] = "/.well-known/core";
+    //char path[] = "/.well-known/core";
+    char path[] = "/riot/test0";
 
     len = gcoap_req_init(&pdu, &buf[0], GCOAP_PDU_BUF_SIZE,
                          COAP_METHOD_GET, &path[0]);
 
     printf("len: %i\n", len);
 
-    //coap_hdr_set_type(pdu.hdr, COAP_TYPE_CON);
+    coap_hdr_set_type(pdu.hdr, COAP_TYPE_CON);
     coap_opt_add_format(&pdu, COAP_FORMAT_JSON);
     len += coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
     printf("len new: %i\n", len);
