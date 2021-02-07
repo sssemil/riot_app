@@ -61,6 +61,9 @@ USEMODULE += gnrc_icmpv6_echo
 USEMODULE += od
 USEMODULE += fmt
 
+# Benchmark
+USEMODULE += benchmark
+
 FEATURES_OPTIONAL += periph_rtc
 
 ifneq (,$(filter msba2,$(BOARD)))
