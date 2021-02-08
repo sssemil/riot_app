@@ -73,6 +73,9 @@ static uint64_t userctx_last_persisted;
 
 #include <led.h>
 
+static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
+                            size_t maxlen, coap_link_encoder_ctx_t *context);
+
 static bool ledstate = false;
 
 void light_parse(oscore_msg_protected_t *in, void *vstate)
@@ -339,9 +342,17 @@ static const coap_resource_t _resources[] = {
 static gcoap_listener_t _listener = {
     &_resources[0],
     ARRAY_SIZE(_resources),
+    _encode_link,
     NULL,
     NULL
 };
+
+static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
+                            size_t maxlen, coap_link_encoder_ctx_t *context)
+{
+    ssize_t res = gcoap_encode_link(resource, buf, maxlen, context);
+    return res;
+}
 
 /** Data allocated by send_static_request that needs to be available during
  * response processing */
