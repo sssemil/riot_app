@@ -4,3 +4,6 @@
 [submodule "liboscore"]
 	path = liboscore
 	url = https://gitlab.com/oscore/liboscore.git
+[submodule "RIOT_DTLS"]
+	path = RIOT_DTLS
+	url = git://github.com/janosbrodbeck/RIOT.git
