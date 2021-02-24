@@ -52,6 +52,9 @@ GCOAP_ENABLE_DTLS ?= 0
 ifeq (1,$(GCOAP_ENABLE_DTLS))
 	CFLAGS += -DCONFIG_GCOAP_ENABLE_DTLS=1
 	CFLAGS += -DDTLS_PEER_MAX=1
+
+	# increase main stack
+	CFLAGS += -DTHREAD_STACKSIZE_MAIN=2*THREAD_STACKSIZE_DEFAULT
 endif
 
 # For now this goes after the inclusion of Makefile.include so Kconfig symbols
