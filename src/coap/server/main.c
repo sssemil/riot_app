@@ -8,6 +8,10 @@
 #include "net/netif.h"
 #include "benchmark.h"
 
+#ifndef VERBOSE
+#define VERBOSE 0
+#endif
+
 static ssize_t _riot_test0_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx);
 static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
                             size_t maxlen, coap_link_encoder_ctx_t *context);
@@ -50,22 +54,26 @@ static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
 static ssize_t _riot_test0_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
 {
     (void)ctx;
-    printf("_riot_test0_handler\n");
+
+    uint32_t departure_time;
+    uint32_t *payload_uint32_ptr = (uint32_t *)pdu->payload;
+    departure_time = *payload_uint32_ptr;
+    uint16_t payload_len = pdu->payload_len;
+
+#if VERBOSE
+    printf("_riot_test0_handler, departure_time: %i, payload_len: %i\n", departure_time, payload_len);
+#endif
+
     gcoap_resp_init(pdu, buf, len, COAP_CODE_CONTENT);
     coap_opt_add_format(pdu, COAP_FORMAT_TEXT);
     size_t resp_len = coap_opt_finish(pdu, COAP_OPT_FINISH_PAYLOAD);
 
-    /* write the RIOT board name in the response buffer */
-    if (pdu->payload_len >= strlen(RIOT_BOARD))
-    {
-        memcpy(pdu->payload, RIOT_BOARD, strlen(RIOT_BOARD));
-        return resp_len + strlen(RIOT_BOARD);
-    }
-    else
-    {
-        printf("gcoap_cli: msg buffer too small\n");
-        return gcoap_response(pdu, buf, len, COAP_CODE_INTERNAL_SERVER_ERROR);
-    }
+    memset(pdu->payload, 'a', payload_len);
+    pdu->payload[payload_len - 1] = 0;
+    payload_uint32_ptr = (uint32_t *)pdu->payload;
+    *payload_uint32_ptr = departure_time;
+
+    return resp_len + payload_len;
 }
 
 void print_iface(netif_t *iface)
