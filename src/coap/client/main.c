@@ -9,10 +9,34 @@
 #include "od.h"
 #include "benchmark.h"
 
-#define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 16
-
 #ifndef VERBOSE
 #define VERBOSE 0
+#endif
+
+#define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 16
+
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
+#include "net/credman.h"
+#include "net/dsm.h"
+#include "tinydtls_keys.h"
+
+static const uint8_t psk_id_0[] = PSK_DEFAULT_IDENTITY;
+static const uint8_t psk_key_0[] = PSK_DEFAULT_KEY;
+static const credman_credential_t credential = {
+    .type = CREDMAN_TYPE_PSK,
+    .tag = CONFIG_GCOAP_DTLS_CREDENTIAL_TAG,
+    .params = {
+        .psk = {
+            .key = {
+                .s = psk_key_0,
+                .len = sizeof(psk_key_0) - 1,
+            },
+            .id = {
+                .s = psk_id_0,
+                .len = sizeof(psk_id_0) - 1,
+            },
+        }},
+};
 #endif
 
 uint32_t benchmark_time_sum = 0;
@@ -243,10 +267,24 @@ int main(void)
     printf("======================================================================\n");
     char *server_addr_str = "fe80::200:ff:fe00:ab";
 
-    size_t runs = 1;
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
+    int res = credman_add(&credential);
+    if (res < 0 && res != CREDMAN_EXIST)
+    {
+        /* ignore duplicate credentials */
+        printf("Error cannot add credential to system: %d\n", (int)res);
+        return -1;
+    }
+
+    printf("Connection secured with DTLS\n");
+    printf("Free DTLS session slots: %d/%d\n", dsm_get_num_available_slots(),
+           dsm_get_num_maximum_slots());
+#endif
+
+    size_t runs = 1000000;
     size_t payload_length = 4;
 
-    for (; payload_length <= 4; payload_length *= 2)
+    for (; payload_length <= 128; payload_length *= 2)
     {
         benchmark_time_sum = 0;
         rtt_replies_count = 0;

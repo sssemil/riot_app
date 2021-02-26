@@ -8,6 +8,9 @@
 #include "net/netif.h"
 #include "benchmark.h"
 
+#include "tinydtls_keys.h"
+#include "net/credman.h"
+
 #ifndef VERBOSE
 #define VERBOSE 0
 #endif
@@ -15,6 +18,30 @@
 static ssize_t _riot_test0_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx);
 static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
                             size_t maxlen, coap_link_encoder_ctx_t *context);
+
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
+#include "net/credman.h"
+#include "net/dsm.h"
+#include "tinydtls_keys.h"
+
+static const uint8_t psk_id_0[] = PSK_DEFAULT_IDENTITY;
+static const uint8_t psk_key_0[] = PSK_DEFAULT_KEY;
+static const credman_credential_t credential = {
+    .type = CREDMAN_TYPE_PSK,
+    .tag = CONFIG_GCOAP_DTLS_CREDENTIAL_TAG,
+    .params = {
+        .psk = {
+            .key = {
+                .s = psk_key_0,
+                .len = sizeof(psk_key_0) - 1,
+            },
+            .id = {
+                .s = psk_id_0,
+                .len = sizeof(psk_id_0) - 1,
+            },
+        }},
+};
+#endif
 
 static const coap_resource_t _resources[] = {
     {"/riot/test0", COAP_GET, _riot_test0_handler, NULL},
@@ -107,7 +134,23 @@ int main(void)
         return -1;
     }
 
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
+    int res = credman_add(&credential);
+    if (res < 0 && res != CREDMAN_EXIST)
+    {
+        /* ignore duplicate credentials */
+        printf("Error cannot add credential to system: %d\n", (int)res);
+        return -1;
+    }
+
+    printf("Connection secured with DTLS\n");
+    printf("Free DTLS session slots: %d/%d\n", dsm_get_num_available_slots(),
+           dsm_get_num_maximum_slots());
+#endif
+
     gcoap_register_listener(&_listener);
+
+    printf("CoAP server is listening on port %u\n", CONFIG_GCOAP_PORT);
 
     return 0;
 }

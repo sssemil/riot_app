@@ -4,8 +4,15 @@ APPLICATION = default
 # If no BOARD is found in the environment, use this default:
 BOARD ?= native
 
+# Enables DTLS-secured CoAP messaging
+GCOAP_ENABLE_DTLS ?= 1
+
 # This has to be the absolute path to the RIOT base directory:
-RIOTBASE ?= $(CURDIR)/../../../RIOT
+ifeq (1,$(GCOAP_ENABLE_DTLS))
+	RIOTBASE ?= $(CURDIR)/../../../RIOT_DTLS
+else
+	RIOTBASE ?= $(CURDIR)/../../../RIOT
+endif
 
 # Uncomment this to enable scheduler statistics for ps:
 #USEMODULE += schedstatistics
@@ -21,6 +28,20 @@ DEVELHELP ?= 1
 
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 0
+
+ifeq (1,$(GCOAP_ENABLE_DTLS))
+	# Required by DTLS. Currently, only tinyDTLS is supported by sock_dtls.
+	USEPKG += tinydtls
+	USEMODULE += tinydtls_sock_dtls
+	USEMODULE += gcoap_dtls
+	# tinydtls needs crypto secure PRNG
+	USEMODULE += prng_sha1prng
+
+	CFLAGS += -DCONFIG_GCOAP_ENABLE_DTLS=1
+	CFLAGS += -DDTLS_PEER_MAX=1
+	# increase main stack
+	CFLAGS += -DTHREAD_STACKSIZE_MAIN=2*THREAD_STACKSIZE_DEFAULT
+endif
 
 # Modules to include:
 USEMODULE += shell
