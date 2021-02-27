@@ -152,5 +152,19 @@ int main(void)
 
     printf("CoAP server is listening on port %u\n", CONFIG_GCOAP_PORT);
 
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
+    uint8_t last_slot_count = DTLS_PEER_MAX;
+    while (true)
+    {
+        if (last_slot_count != dsm_get_num_available_slots())
+        {
+            printf("Free DTLS session slots: %d/%d\n", dsm_get_num_available_slots(),
+                   dsm_get_num_maximum_slots());
+            last_slot_count = dsm_get_num_available_slots();
+        }
+        usleep(5000 * 1000);
+    }
+#endif
+
     return 0;
 }
