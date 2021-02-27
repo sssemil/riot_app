@@ -2,6 +2,8 @@
 
 ./setup_iface.sh
 
-cd src/coap_dtls/client
-make all -j$(nproc)
+cd src/coap/client
+make clean
+GCOAP_ENABLE_DTLS=1 make all -j$(nproc)
+GCOAP_ENABLE_DTLS=1 make all -j$(nproc)
 PORT=tap1 make term
