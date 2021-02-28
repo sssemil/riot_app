@@ -7,6 +7,12 @@ BOARD ?= native
 # Enables DTLS-secured CoAP messaging
 GCOAP_ENABLE_DTLS ?= 1
 
+# Benchmark config
+CONFIG_RUNS_COUNT ?= 1000000
+CONFIG_BYTES_COUNT ?= 4
+
+CFLAGS += -DCONFIG_RUNS_COUNT=${CONFIG_RUNS_COUNT} -DCONFIG_BYTES_COUNT=${CONFIG_BYTES_COUNT}
+
 # This has to be the absolute path to the RIOT base directory:
 ifeq (1,$(GCOAP_ENABLE_DTLS))
 	RIOTBASE ?= $(CURDIR)/../../../RIOT_DTLS

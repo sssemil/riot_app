@@ -13,6 +13,14 @@
 #define VERBOSE 0
 #endif
 
+#ifndef CONFIG_RUNS_COUNT
+#define CONFIG_RUNS_COUNT 1000000
+#endif
+
+#ifndef CONFIG_BYTES_COUNT
+#define CONFIG_BYTES_COUNT 4
+#endif
+
 #define GCOAP_PDU_BUF_SIZE CONFIG_GCOAP_PDU_BUF_SIZE * 16
 
 #if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS)
@@ -281,25 +289,26 @@ int main(void)
            dsm_get_num_maximum_slots());
 #endif
 
-    size_t runs = 1000000;
-    size_t payload_length = 4;
+    printf("CONFIG_RUNS_COUNT: %i\n", CONFIG_RUNS_COUNT);
+    printf("CONFIG_BYTES_COUNT: %i\n", CONFIG_BYTES_COUNT);
 
-    for (; payload_length <= 128; payload_length *= 2)
+    size_t runs = CONFIG_RUNS_COUNT;
+    size_t payload_length = CONFIG_BYTES_COUNT;
+
+    benchmark_time_sum = 0;
+    rtt_replies_count = 0;
+
+    gcoap_test0(server_addr_str, payload_length, runs);
+
+    // wait for the "rest" of the replies
+    do
     {
-        benchmark_time_sum = 0;
-        rtt_replies_count = 0;
-        printf("payload_length: %i\n", payload_length);
-        gcoap_test0(server_addr_str, payload_length, runs);
+        printf("rtt_replies_count: %i\n", rtt_replies_count);
+        usleep(1000 * 1000);
+    } while (rtt_replies_count < runs - (runs / 10));
 
-        // wait for the rest of replies for a sec
-        do
-        {
-            printf("rtt_replies_count: %i\n", rtt_replies_count);
-            usleep(1000 * 1000);
-        } while (rtt_replies_count < runs - (runs / 10));
+    benchmark_print_time(benchmark_time_sum, runs, "coap_rtt");
 
-        benchmark_print_time(benchmark_time_sum, runs, "coap_rtt");
-    }
-
+    exit(0);
     return 0;
 }
