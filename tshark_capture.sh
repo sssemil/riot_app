@@ -7,15 +7,20 @@ set -o xtrace
 # make sure that no other instances are running
 killall default.elf
 
+# enable DTLS by default
+GCOAP_ENABLE_DTLS=${GCOAP_ENABLE_DTLS:-1}
+echo "GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS"
+
+# configure benchmark
+CONFIG_RUNS_COUNT=${CONFIG_RUNS_COUNT:-10000}
+CONFIG_BYTES_COUNT=${CONFIG_BYTES_COUNT:-4}
+echo "CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT"
+echo "CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT"
+
 # build
-
-if [ -n "$GCOAP_ENABLE_DTLS" ]; then
-    GCOAP_ENABLE_DTLS=1
-fi
-
 cd src/coap/client
 ../../../conditional_clean.sh
-CONFIG_RUNS_COUNT=10000 CONFIG_BYTES_COUNT=6 make all -j$(nproc)
+make all -j$(nproc)
 cd ../../../
 
 cd src/coap/server
@@ -56,7 +61,7 @@ echo "server PID:" $server_pid
 echo "client PID:" $client_pid
 
 # capture
-tshark -i tapbr0 -w 10000_coap_dtls.pcapng &
+tshark -i tapbr0 -w ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng &
 tshark_pid=$!
 
 # wait for client to exit
