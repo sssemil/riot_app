@@ -1,11 +1,13 @@
 #!/bin/bash
 
-set -o xtrace
+#set -o xtrace
 
 ./setup_iface.sh
 
 # make sure that no other instances are running
-killall default.elf
+while killall -s SIGKILL default.elf; do
+    echo "killing other RIOT-OS native instances..."
+done
 
 # enable DTLS by default
 GCOAP_ENABLE_DTLS=${GCOAP_ENABLE_DTLS:-1}
@@ -20,7 +22,7 @@ echo "CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT"
 # build
 cd src/coap/client
 ../../../conditional_clean.sh
-make all -j$(nproc)
+CONFIG_RUNS_COUNT=$CONFIG_RUNS_COUNT CONFIG_BYTES_COUNT=$CONFIG_BYTES_COUNT make all -j$(nproc)
 cd ../../../
 
 cd src/coap/server
@@ -28,48 +30,54 @@ cd src/coap/server
 make all -j$(nproc)
 cd ../../../
 
+# capture
+tshark -i tapbr0 -w ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng &
+tshark_pid=$!
+
 # start server
 cd src/coap/server
 (PORT=tap0 make term) &
 cd ../../../
 
 # wait for run
-sleep 3
+sleep 2
 
 # start client
 cd src/coap/client
-(PORT=tap1 make term) &
+
+{
+    IFS=$'\n' read -r -d '' CLIENT_OUTPUT
+    IFS=$'\n' read -r -d '' CLIENT_OUTPUT_STDOUT
+} < <((printf '\0%s\0' "$(PORT=tap1 make term)" 1>&2) 2>&1)
+
+echo $CLIENT_OUTPUT_STDOUT
+echo $CLIENT_OUTPUT
+
 cd ../../../
 
-# wait for run
-sleep 1
-
 # get pids
-elf_pids=($(pidof default.elf))
-echo $elf_pids
-server_pid=${elf_pids[1]}
-client_pid=${elf_pids[0]}
-
-if [ -z "$server_pid" ] || [ -z "$client_pid" ]; then
-    echo "RIOT-OS start failed! Killing any survivors..."
-    kill $client_pid
-    kill $server_pid
-fi
-
-# wait for run
-echo "server PID:" $server_pid
-echo "client PID:" $client_pid
-
-# capture
-tshark -i tapbr0 -w ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng &
-tshark_pid=$!
-
-# wait for client to exit
-echo "waiting for client to finsh..."
-while ps | grep "$client_pid"; do
-    sleep 5
-done
+server_pid=$(pidof default.elf)
 
 # stop everything
 kill $tshark_pid
 kill $server_pid
+
+# get result out
+sleep 5
+
+BENCHMARK_RESULTS_ARR=($CLIENT_OUTPUT)
+RTT_REPLIES_COUNT=${BENCHMARK_RESULTS_ARR[2]}
+BENCHMARK_TIME_SUM=${BENCHMARK_RESULTS_ARR[3]}
+
+# analyze tshark capture
+FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6" -q | tail -2 | head -1 | cut -d'|' -f 3)
+
+# print results
+echo "================================================================"
+echo "GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS"
+echo "CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT"
+echo "CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT"
+echo "RTT_REPLIES_COUNT: $RTT_REPLIES_COUNT"
+echo "BENCHMARK_TIME_SUM: $BENCHMARK_TIME_SUM"
+echo "FRAME_LEN_SUM: $FRAME_LEN_SUM"
+echo "================================================================"
