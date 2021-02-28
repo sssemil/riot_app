@@ -307,7 +307,10 @@ int main(void)
         usleep(1000 * 1000);
     } while (rtt_replies_count < runs - (runs / 10));
 
-    benchmark_print_time(benchmark_time_sum, runs, "coap_rtt");
+    benchmark_print_time(benchmark_time_sum, rtt_replies_count, "coap_rtt");
+
+    // clean output for the analysis script
+    fprintf(stderr, "rtt_replies_count benchmark_time_sum\n%i %i", rtt_replies_count, benchmark_time_sum);
 
     exit(0);
     return 0;
