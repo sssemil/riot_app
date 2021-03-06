@@ -31,10 +31,10 @@ static struct oscore_context_primitive_immutables immutables_b = {
     .sender_id = "\x01",
     .sender_key = B_SENDER_KEY,
 };
-static struct oscore_context_primitive primitive_b = { .immutables = &immutables_b };
+static struct oscore_context_primitive primitive_b = {.immutables = &immutables_b};
 oscore_context_t secctx_b = {
     .type = OSCORE_CONTEXT_PRIMITIVE,
-    .data = (void*)(&primitive_b),
+    .data = (void *)(&primitive_b),
 };
 mutex_t secctx_b_usage = MUTEX_INIT;
 
@@ -49,10 +49,10 @@ static struct oscore_context_primitive_immutables immutables_d = {
     .sender_id = "\x01",
     .sender_key = D_SENDER_KEY,
 };
-static struct oscore_context_primitive primitive_d = { .immutables = &immutables_d };
+static struct oscore_context_primitive primitive_d = {.immutables = &immutables_d};
 oscore_context_t secctx_d = {
     .type = OSCORE_CONTEXT_PRIMITIVE,
-    .data = (void*)(&primitive_d),
+    .data = (void *)(&primitive_d),
 };
 mutex_t secctx_d_usage = MUTEX_INIT;
 
@@ -60,7 +60,7 @@ mutex_t secctx_d_usage = MUTEX_INIT;
 static struct oscore_context_b1 context_u;
 oscore_context_t secctx_u = {
     .type = OSCORE_CONTEXT_B1,
-    .data = (void*)(&context_u),
+    .data = (void *)(&context_u),
 };
 mutex_t secctx_u_usage = MUTEX_INIT;
 int16_t secctx_u_change = 0; // RW lock count, only to be changed while secctx_u_usage is kept. The variable keeps track of the number of readers (readers in RW-lock terminology; here it's "request_id objects out there"). A writer may change the context as a whole while keeping secctx_u_usage locked and secctx_u_change is 0.
@@ -89,42 +89,51 @@ void light_parse(oscore_msg_protected_t *in, void *vstate)
     // integration) and a simple application (the blinking demo), those checks
     // are ignored.
 
-    switch (oscore_msg_protected_get_code(in)) {
-        case 1 /* GET */:
-            *responsecode = 0x45 /* 2.05 Content */;
-            break;
-        case 3 /* PUT */:
+    switch (oscore_msg_protected_get_code(in))
+    {
+    case 1 /* GET */:
+        *responsecode = 0x45 /* 2.05 Content */;
+        break;
+    case 3 /* PUT */:
+    {
+        uint8_t *payload;
+        size_t payload_length;
+        oscore_msgerr_protected_t err = oscore_msg_protected_map_payload(in, &payload, &payload_length);
+        if (oscore_msgerr_protected_is_error(err))
+        {
+            *responsecode = 0x80 /* 4.00 Bad Request */; // probably an option encoding error
+            return;
+        }
+        if (payload_length == 2 && payload[1] == '\n')
+        {
+            // Allow trailing newline
+            payload_length--;
+        }
+        if (payload_length == 1 && '0' <= payload[0] && payload[0] <= '1')
+        {
+            if (payload[0] == '1')
             {
-            uint8_t *payload;
-            size_t payload_length;
-            oscore_msgerr_protected_t err = oscore_msg_protected_map_payload(in, &payload, &payload_length);
-            if (oscore_msgerr_protected_is_error(err)) {
-                *responsecode = 0x80 /* 4.00 Bad Request */; // probably an option encoding error
-                return;
+                LED_ON(0);
+                printf("LED switched to ON\n");
+                ledstate = true;
             }
-            if (payload_length == 2 && payload[1] == '\n') {
-                // Allow trailing newline
-                payload_length --;
+            else
+            {
+                LED_OFF(0);
+                printf("LED switched to OFF\n");
+                ledstate = false;
             }
-            if (payload_length == 1 && '0' <= payload[0] && payload[0] <= '1') {
-                if (payload[0] == '1') {
-                    LED_ON(0);
-                    printf("LED switched to ON\n");
-                    ledstate = true;
-                } else {
-                    LED_OFF(0);
-                    printf("LED switched to OFF\n");
-                    ledstate = false;
-                }
-                *responsecode = 0x44 /* 2.04 Changed */;
-            } else {
-                *responsecode = 0x80 /* 4.00 Bad Request */; // application level bad request
-            }
-            }
-            break;
-        default:
-            *responsecode = 0x85 /* 4.05 Method Not Allowed */;
-            break;
+            *responsecode = 0x44 /* 2.04 Changed */;
+        }
+        else
+        {
+            *responsecode = 0x80 /* 4.00 Bad Request */; // application level bad request
+        }
+    }
+    break;
+    default:
+        *responsecode = 0x85 /* 4.05 Method Not Allowed */;
+        break;
     }
 }
 
@@ -135,18 +144,22 @@ void light_build(oscore_msg_protected_t *out, const void *vstate, const struct o
 
     oscore_msg_protected_set_code(out, *responsecode);
 
-    if (*responsecode == 0x45 /* 2.05 Content */) {
+    if (*responsecode == 0x45 /* 2.05 Content */)
+    {
         uint8_t *payload;
         size_t payload_length;
         oscore_msgerr_protected_t err = oscore_msg_protected_map_payload(out, &payload, &payload_length);
-        if (oscore_msgerr_protected_is_error(err)) {
+        if (oscore_msgerr_protected_is_error(err))
+        {
             oscore_msg_protected_set_code(out, 0xa0 /* 5.00 Internal Error */);
             oscore_msg_protected_trim_payload(out, 0);
             return;
         }
         payload[0] = '0' + ledstate;
         oscore_msg_protected_trim_payload(out, 1);
-    } else {
+    }
+    else
+    {
         oscore_msg_protected_trim_payload(out, 0);
     }
 }
@@ -163,20 +176,23 @@ bool get_blockopt2(oscore_msg_protected_t *msg, struct sensordata_blockopt *bloc
     const uint8_t *opt_val;
     size_t opt_len;
     oscore_msg_protected_optiter_init(msg, &iter);
-    while (oscore_msg_protected_optiter_next(msg, &iter, &opt_num, &opt_val, &opt_len)) {
+    while (oscore_msg_protected_optiter_next(msg, &iter, &opt_num, &opt_val, &opt_len))
+    {
         if (opt_num != 23 /* Block2 */)
             continue;
-        if (opt_len >= 4) {
+        if (opt_len >= 4)
+        {
             error = true;
             break;
         }
-        network_uint32_t buf = { .u32 = 0 };
+        network_uint32_t buf = {.u32 = 0};
         memcpy(&buf.u8[4 - opt_len], opt_val, opt_len);
         uint32_t numeric = byteorder_ntohl(buf);
         blockopt->num = numeric >> 4;
         // ignoring the "M" bit
         blockopt->szx = numeric & 0x7;
-        if (blockopt->szx == 7) {
+        if (blockopt->szx == 7)
+        {
             error = true;
             break;
         }
@@ -196,7 +212,8 @@ void sensordata_parse(oscore_msg_protected_t *in, void *vstate)
     // framework (the minimal intermediate integration) and a simple
     // application (the sensordata demo), those checks are ignored.
 
-    if (oscore_msg_protected_get_code(in) != 1 /* GET */) {
+    if (oscore_msg_protected_get_code(in) != 1 /* GET */)
+    {
         state->responsecode = 0x85 /* 4.05 Method Not Allowed */;
         return;
     }
@@ -209,43 +226,44 @@ void sensordata_parse(oscore_msg_protected_t *in, void *vstate)
 }
 
 const char message[] = "{\"data\": ["
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
-"42]}";
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, "
+                       "42]}";
 
 void sensordata_build(oscore_msg_protected_t *out, const void *vstate, const struct observe_option *outer_observe)
 {
     (void)outer_observe;
-    struct sensordata_blockopt state = *(struct sensordata_blockopt*)vstate;
+    struct sensordata_blockopt state = *(struct sensordata_blockopt *)vstate;
 
     oscore_msg_protected_set_code(out, state.responsecode);
 
-    if (state.responsecode != 0x45 /* 2.05 Content */) {
+    if (state.responsecode != 0x45 /* 2.05 Content */)
+    {
         oscore_msg_protected_trim_payload(out, 0);
         return;
     }
@@ -255,37 +273,43 @@ void sensordata_build(oscore_msg_protected_t *out, const void *vstate, const str
     //
     // Could be optimized by reducing the size to whatever the block number
     // reduced to the lowest plausible buffer size needs to fit
-    err = oscore_msg_protected_append_option(out, 23 /* Block 2 */, (uint8_t*)"XXXX", 4);
+    err = oscore_msg_protected_append_option(out, 23 /* Block 2 */, (uint8_t *)"XXXX", 4);
 
     uint8_t *payload;
     size_t payload_length;
     err = oscore_msg_protected_map_payload(out, &payload, &payload_length);
 
-    if (oscore_msgerr_protected_is_error(err)) {
+    if (oscore_msgerr_protected_is_error(err))
+    {
         oscore_msg_protected_set_code(out, 0xa0 /* 5.00 Internal Error */);
         oscore_msg_protected_trim_payload(out, 0);
         return;
     }
 
     size_t blocksize;
-    while (true) {
+    while (true)
+    {
         blocksize = 1 << (state.szx + 4);
 
-        if (blocksize > payload_length) {
+        if (blocksize > payload_length)
+        {
             assert(state.szx >= 1); // because such small a buffer is never allocated
-            state.szx --;
+            state.szx--;
             state.num <<= 1;
-        } else {
+        }
+        else
+        {
             break;
         }
     }
     size_t start = blocksize * state.num;
     size_t end = start + blocksize;
 
-    uint8_t *data = (uint8_t*)&message;
+    uint8_t *data = (uint8_t *)&message;
     size_t data_length = strlen(message);
 
-    if (start > data_length) {
+    if (start > data_length)
+    {
         oscore_msg_protected_set_code(out, 0x80 /* 4.00 Bad Request */);
         // FIXME: Remove Block option
         oscore_msg_protected_trim_payload(out, 0);
@@ -305,7 +329,8 @@ void sensordata_build(oscore_msg_protected_t *out, const void *vstate, const str
     err = oscore_msg_protected_update_option(out, 23 /* Block2 */, 0, buf.u8, 4);
 
     // Very elaborate constant propagation could remove this.
-    if (oscore_msgerr_protected_is_error(err)) {
+    if (oscore_msgerr_protected_is_error(err))
+    {
         oscore_msg_protected_set_code(out, 0xa0 /* 5.00 Internal Error */);
         oscore_msg_protected_trim_payload(out, 0);
     }
@@ -321,11 +346,13 @@ static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, vo
     size_t resp_len = coap_opt_finish(pdu, COAP_OPT_FINISH_PAYLOAD);
 
     /* write the RIOT board name in the response buffer */
-    if (pdu->payload_len >= strlen(RIOT_BOARD)) {
+    if (pdu->payload_len >= strlen(RIOT_BOARD))
+    {
         memcpy(pdu->payload, RIOT_BOARD, strlen(RIOT_BOARD));
         return resp_len + strlen(RIOT_BOARD);
     }
-    else {
+    else
+    {
         puts("gcoap_cli: msg buffer too small");
         return gcoap_response(pdu, buf, len, COAP_CODE_INTERNAL_SERVER_ERROR);
     }
@@ -333,9 +360,9 @@ static ssize_t _riot_board_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, vo
 
 static const coap_resource_t _resources[] = {
     /* This index (0) is used by the notify mechanism, don't move it around without updating there */
-    { "/", COAP_POST | COAP_FETCH, oscore_handler, NULL },
-    { "/oscore/hello/coap", COAP_GET, plugtest_nonoscore_hello, NULL },
-    { "/riot/board", COAP_GET, _riot_board_handler, NULL },
+    {"/", COAP_POST | COAP_FETCH, oscore_handler, NULL},
+    {"/oscore/hello/coap", COAP_GET, plugtest_nonoscore_hello, NULL},
+    {"/riot/board", COAP_GET, _riot_board_handler, NULL},
     // FIXME: This creates an artefact entry in .well-known/core
 };
 
@@ -344,8 +371,7 @@ static gcoap_listener_t _listener = {
     ARRAY_SIZE(_resources),
     _encode_link,
     NULL,
-    NULL
-};
+    NULL};
 
 static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
                             size_t maxlen, coap_link_encoder_ctx_t *context)
@@ -356,7 +382,8 @@ static ssize_t _encode_link(const coap_resource_t *resource, char *buf,
 
 /** Data allocated by send_static_request that needs to be available during
  * response processing */
-struct static_request_data {
+struct static_request_data
+{
     /** Mutex that's released by the response handler as the last action,
      * indicating that send_static_request may terminate and thus free the
      * static_request_data from the stack */
@@ -371,7 +398,8 @@ static void handle_static_response(const struct gcoap_request_memo *memo, coap_p
     // don't care, didn't send multicast
     (void)remote;
 
-    if (memo->state != GCOAP_MEMO_RESP) {
+    if (memo->state != GCOAP_MEMO_RESP)
+    {
         printf("Request returned without a response\n");
         goto error;
     }
@@ -381,25 +409,28 @@ static void handle_static_response(const struct gcoap_request_memo *memo, coap_p
     // This is nanocoap's shortcut (compare to unprotect-demo, where we iterate through the outer options)
     uint8_t *header_data;
     ssize_t header_size = coap_opt_get_opaque(pdu, 9, &header_data);
-    if (header_size < 0) {
+    if (header_size < 0)
+    {
         printf("No OSCORE option in response!\n");
         goto error;
     }
     bool parsed = oscore_oscoreoption_parse(&header, header_data, header_size);
-    if (!parsed) {
+    if (!parsed)
+    {
         printf("OSCORE option unparsable\n");
         goto error;
     }
 
     // FIXME: this should be in a dedicated parsed_pdu_to_oscore_msg_native_t process
     // (and possibly foolishly assuming that there is a payload marker)
-    pdu->payload --;
-    pdu->payload_len ++;
-    oscore_msg_native_t pdu_read = { .pkt = pdu };
+    pdu->payload--;
+    pdu->payload_len++;
+    oscore_msg_native_t pdu_read = {.pkt = pdu};
 
     oscore_msg_protected_t msg;
 
-    if (mutex_trylock(&secctx_u_usage) != 1)  {
+    if (mutex_trylock(&secctx_u_usage) != 1)
+    {
         // Could just as well block, but I prefer this for its clearer error behavior
         printf("Can't unprotect response, security context in use\n");
         goto error;
@@ -408,16 +439,20 @@ static void handle_static_response(const struct gcoap_request_memo *memo, coap_p
     secctx_u_change -= 1;
     mutex_unlock(&secctx_u_usage);
 
-    if (success == OSCORE_UNPROTECT_RESPONSE_OK) {
+    if (success == OSCORE_UNPROTECT_RESPONSE_OK)
+    {
         uint8_t code = oscore_msg_protected_get_code(&msg);
-        if (code == 0x81 /* 4.01 Unauthorized */) {
+        if (code == 0x81 /* 4.01 Unauthorized */)
+        {
             oscore_msg_protected_optiter_t iter;
             uint16_t opt_num;
             const uint8_t *opt_val;
             size_t opt_len;
             oscore_msg_protected_optiter_init(&msg, &iter);
-            while (oscore_msg_protected_optiter_next(&msg, &iter, &opt_num, &opt_val, &opt_len)) {
-                if (opt_num == 252 /* Echo */ && opt_len < sizeof(ctx_u_received_echo_data)) {
+            while (oscore_msg_protected_optiter_next(&msg, &iter, &opt_num, &opt_val, &opt_len))
+            {
+                if (opt_num == 252 /* Echo */ && opt_len < sizeof(ctx_u_received_echo_data))
+                {
                     memcpy(ctx_u_received_echo_data, opt_val, opt_len);
                     ctx_u_received_echo_size = opt_len;
                     printf("Stored %d bytes of Echo option for the next attempt\n", opt_len);
@@ -425,11 +460,14 @@ static void handle_static_response(const struct gcoap_request_memo *memo, coap_p
             };
             (void)oscore_msg_protected_optiter_finish(&msg, &iter);
             printf("Result: 4.01 Unauthorized\n");
-        } else if (code == 0x44 /* 2.04 Changed */)
+        }
+        else if (code == 0x44 /* 2.04 Changed */)
             printf("Result: Changed\n");
         else
             printf("Unknown code in result: %d.%02d\n", code >> 5, code & 0x1f);
-    } else {
+    }
+    else
+    {
         printf("Error unprotecting response\n");
     }
 
@@ -445,21 +483,24 @@ error:
 }
 
 /** Blockingly send @p value to the configured remote resource */
-static void send_static_request(char value) {
+static void send_static_request(char value)
+{
     // This is largely inspired by the gcoap_cli_cmd example code
 
     uint8_t buf[GCOAP_PDU_BUF_SIZE];
     coap_pkt_t pdu;
     oscore_msg_protected_t oscmsg;
 
-    struct static_request_data request_data = { .done = MUTEX_INIT_LOCKED };
+    struct static_request_data request_data = {.done = MUTEX_INIT_LOCKED};
 
-    if (persist->target.port == 0) {
+    if (persist->target.port == 0)
+    {
         printf("No remote configured\n");
         return;
     }
 
-    if (!persist->key_good) {
+    if (!persist->key_good)
+    {
         printf("No security context configured\n");
         return;
     }
@@ -467,7 +508,8 @@ static void send_static_request(char value) {
     // Can't pre-set a path, the request must be empty at protection time
     int err;
     err = gcoap_req_init(&pdu, buf, sizeof(buf), 0x02 /* POST */, NULL);
-    if (err != 0) {
+    if (err != 0)
+    {
         printf("Failed to initialize request\n");
         return;
     }
@@ -477,9 +519,10 @@ static void send_static_request(char value) {
     coap_hdr_set_type(pdu.hdr, COAP_TYPE_CON);
 
     // FIXME use conversion
-    oscore_msg_native_t native = { .pkt = &pdu };
+    oscore_msg_native_t native = {.pkt = &pdu};
 
-    if (mutex_trylock(&secctx_u_usage) != 1)  {
+    if (mutex_trylock(&secctx_u_usage) != 1)
+    {
         // Could just as well block, but I prefer this for its clearer error behavior
         printf("Can't send request, security context in use\n");
         return;
@@ -494,7 +537,8 @@ static void send_static_request(char value) {
     // the demo code more complex.
     userctx_maybe_persist();
 
-    if (oscore_prepare_request(native, &oscmsg, &secctx_u, &request_data.request_id) != OSCORE_PREPARE_OK) {
+    if (oscore_prepare_request(native, &oscmsg, &secctx_u, &request_data.request_id) != OSCORE_PREPARE_OK)
+    {
         mutex_unlock(&secctx_u_usage);
         printf("Failed to prepare request encryption\n");
         return;
@@ -503,17 +547,20 @@ static void send_static_request(char value) {
     mutex_unlock(&secctx_u_usage);
 
     oscore_msg_protected_set_code(&oscmsg, 0x03 /* PUT */);
-    
+
     oscore_msgerr_protected_t oscerr;
-    oscerr = oscore_msg_protected_append_option(&oscmsg, 11 /* Uri-Path */, (uint8_t*)"light", 5);
-    if (oscore_msgerr_protected_is_error(oscerr)) {
+    oscerr = oscore_msg_protected_append_option(&oscmsg, 11 /* Uri-Path */, (uint8_t *)"light", 5);
+    if (oscore_msgerr_protected_is_error(oscerr))
+    {
         printf("Failed to add option\n");
         goto error;
     }
 
-    if (ctx_u_received_echo_size != -1) {
+    if (ctx_u_received_echo_size != -1)
+    {
         oscerr = oscore_msg_protected_append_option(&oscmsg, 252 /* Echo */, ctx_u_received_echo_data, ctx_u_received_echo_size);
-        if (oscore_msgerr_protected_is_error(oscerr)) {
+        if (oscore_msgerr_protected_is_error(oscerr))
+        {
             printf("Failed to add option\n");
             goto error;
         }
@@ -524,28 +571,32 @@ static void send_static_request(char value) {
     uint8_t *payload;
     size_t payload_length;
     oscerr = oscore_msg_protected_map_payload(&oscmsg, &payload, &payload_length);
-    if (oscore_msgerr_protected_is_error(oscerr)) {
+    if (oscore_msgerr_protected_is_error(oscerr))
+    {
         printf("Failed to map payload\n");
         goto error;
     }
     *payload = value;
 
     oscerr = oscore_msg_protected_trim_payload(&oscmsg, 1);
-    if (oscore_msgerr_protected_is_error(oscerr)) {
+    if (oscore_msgerr_protected_is_error(oscerr))
+    {
         printf("Failed to truncate payload\n");
         goto error;
     }
 
     oscore_msg_native_t pdu_write_out;
-    if (oscore_encrypt_message(&oscmsg, &pdu_write_out) != OSCORE_FINISH_OK) {
+    if (oscore_encrypt_message(&oscmsg, &pdu_write_out) != OSCORE_FINISH_OK)
+    {
         // see FIXME in oscore_encrypt_message description
         assert(false);
     }
 
     // PDU is usable now again and can be sent
 
-    int bytes_sent = gcoap_req_send(buf, pdu.payload - (uint8_t*)pdu.hdr + pdu.payload_len, &persist->target, handle_static_response, &request_data);
-    if (bytes_sent <= 0) {
+    int bytes_sent = gcoap_req_send(buf, pdu.payload - (uint8_t *)pdu.hdr + pdu.payload_len, &persist->target, handle_static_response, &request_data);
+    if (bytes_sent <= 0)
+    {
         printf("Error sending\n");
     }
 
@@ -556,7 +607,8 @@ static void send_static_request(char value) {
     return;
 
 error:
-    {}
+{
+}
     // FIXME: abort encryption (but no PDU recovery and PDU freeing necessary on this backend as it's all stack allocated)
 }
 
@@ -564,7 +616,8 @@ error:
 #define MAIN_QUEUE_SIZE (4)
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
 
-static int cmdline_on(int argc, char **argv) {
+static int cmdline_on(int argc, char **argv)
+{
     (void)argc;
     (void)argv;
 
@@ -572,7 +625,8 @@ static int cmdline_on(int argc, char **argv) {
     return 0;
 }
 
-static int cmdline_off(int argc, char **argv) {
+static int cmdline_off(int argc, char **argv)
+{
     (void)argc;
     (void)argv;
 
@@ -580,8 +634,10 @@ static int cmdline_off(int argc, char **argv) {
     return 0;
 }
 
-static int cmdline_target(int argc, char **argv) {
-    if (argc != 4) {
+static int cmdline_target(int argc, char **argv)
+{
+    if (argc != 4)
+    {
         printf("Usage: target IP ZONE PORT\n");
         return 1;
     }
@@ -589,7 +645,8 @@ static int cmdline_target(int argc, char **argv) {
     ipv6_addr_t addr;
 
     persist->target.netif = atoi(argv[2]);
-    if (!ipv6_addr_from_str(&addr, argv[1])) {
+    if (!ipv6_addr_from_str(&addr, argv[1]))
+    {
         printf("IP address invalid\n");
         persist->target.port = 0;
         return 1;
@@ -599,7 +656,8 @@ static int cmdline_target(int argc, char **argv) {
 
     persist->target.family = AF_INET6;
 
-    if (gnrc_netif_get_by_pid(persist->target.netif) == NULL) {
+    if (gnrc_netif_get_by_pid(persist->target.netif) == NULL)
+    {
         printf("Zone identifier invalid\n");
         persist->target.port = 0;
         return 1;
@@ -610,16 +668,20 @@ static int cmdline_target(int argc, char **argv) {
     return 0;
 }
 
-static bool parse_singlehex(char hex, uint8_t *target) {
-    if ('0' <= hex && hex <= '9') {
+static bool parse_singlehex(char hex, uint8_t *target)
+{
+    if ('0' <= hex && hex <= '9')
+    {
         *target = hex - '0';
         return true;
     }
-    if ('a' <= hex && hex <= 'f') {
+    if ('a' <= hex && hex <= 'f')
+    {
         *target = hex - 'a' + 10;
         return true;
     }
-    if ('A' <= hex && hex <= 'F') {
+    if ('A' <= hex && hex <= 'F')
+    {
         *target = hex - 'A' + 10;
         return true;
     }
@@ -632,24 +694,27 @@ static bool parse_singlehex(char hex, uint8_t *target) {
  * A single trailing '-' is accepted as to make the entry of '-' for a
  * zero-byte string easier.
  * */
-static bool parse_hex(char *hex, size_t len, uint8_t *data) {
+static bool parse_hex(char *hex, size_t len, uint8_t *data)
+{
     uint8_t acc;
-    while (len) {
+    while (len)
+    {
         if (!parse_singlehex(*hex++, &acc))
             return false;
         *data = acc << 4;
         if (!parse_singlehex(*hex++, &acc))
             return false;
         *data |= acc;
-        len --;
-        data ++;
+        len--;
+        data++;
     }
     if (len == 0 && *hex == '-')
-        hex ++;
+        hex++;
     return *hex == 0;
 }
 
-static bool parse_i64(char *chars, int64_t *out) {
+static bool parse_i64(char *chars, int64_t *out)
+{
     char *end = NULL;
     *out = strtoll(chars, &end, 10);
     if (*end != ' ' && *end != '\0' && *end != '\n')
@@ -657,7 +722,8 @@ static bool parse_i64(char *chars, int64_t *out) {
     return true;
 }
 
-static int cmdline_userctx(int argc, char **argv) {
+static int cmdline_userctx(int argc, char **argv)
+{
     if (argc < 7 || argc == 9 || argc > 10)
         return printf("Usage: userctx alg sender-id recipient-id common-iv sender-key recipient-key [seqno [replay-left replay-window]]\nAll keys and IDs in contiguous hex; alg, seqno and replay-left are decimal.\n");
 
@@ -665,7 +731,8 @@ static int cmdline_userctx(int argc, char **argv) {
 
     if (mutex_trylock(&secctx_u_usage) != 1)
         return printf("Can't change user context while the context is in active use.\n");
-    if (secctx_u_change != 0)  {
+    if (secctx_u_change != 0)
+    {
         printf("Can't change user context while %d request_ids are in flight.\n", secctx_u_change);
         mutex_unlock(&secctx_u_usage);
         return 1;
@@ -702,24 +769,30 @@ static int cmdline_userctx(int argc, char **argv) {
         ret = printf("Invalid Recipient Key\n");
 
     int64_t seqno_start;
-    if (argc > 7) {
+    if (argc > 7)
+    {
         if (!parse_i64(argv[7], &seqno_start) || seqno_start < 0 || seqno_start >= OSCORE_SEQNO_MAX)
             ret = printf("Invalid sequence number\n");
-    } else {
+    }
+    else
+    {
         seqno_start = 0;
     }
 
     struct oscore_context_b1_replaydata replaydata;
     bool replaydata_given = false;
-    if (argc > 8) {
+    if (argc > 8)
+    {
         int64_t edgebuffer;
         replaydata_given = true;
-        if (!parse_i64(argv[8], &edgebuffer) || edgebuffer < 0 || edgebuffer >= OSCORE_SEQNO_MAX) {
+        if (!parse_i64(argv[8], &edgebuffer) || edgebuffer < 0 || edgebuffer >= OSCORE_SEQNO_MAX)
+        {
             ret = printf("Invalid replay left edge\n");
             replaydata_given = false;
         }
         replaydata.left_edge = edgebuffer;
-        if (!parse_hex(argv[9], 4, (void*)&replaydata.window)) {
+        if (!parse_hex(argv[9], 4, (void *)&replaydata.window))
+        {
             ret = printf("Invalid replay window\n");
             replaydata_given = false;
         }
@@ -727,7 +800,8 @@ static int cmdline_userctx(int argc, char **argv) {
 
     oscore_context_b1_initialize(&context_u, &persist->key, seqno_start, replaydata_given ? &replaydata : NULL);
 
-    if (ret == 0) {
+    if (ret == 0)
+    {
         persist->key_good = true;
         ctx_u_received_echo_size = -1;
         // Not "maybe": with userctx_last_persisted just set to -1, this will
@@ -742,27 +816,32 @@ static int cmdline_userctx(int argc, char **argv) {
 
 /** Print the @p n bytes from @p data in hex, preceded by a blank, such that it
  * can be copy-pasted to parse_hex */
-static void print_hex(size_t n, uint8_t *data) {
+static void print_hex(size_t n, uint8_t *data)
+{
     printf(" ");
-    if (n == 0) {
+    if (n == 0)
+    {
         printf("-");
         return;
     }
-    while (n > 0) {
+    while (n > 0)
+    {
         printf("%02x", *data);
-        n --;
-        data ++;
+        n--;
+        data++;
     }
 }
 
-static int cmdline_userctx_shutdown(int argc, char **argv) {
+static int cmdline_userctx_shutdown(int argc, char **argv)
+{
     (void)argv;
     if (argc != 1)
         return printf("Usage: userctx\n");
 
     if (mutex_trylock(&secctx_u_usage) != 1)
         return printf("Can't change user context while the context is in active use.\n");
-    if (secctx_u_change != 0)  {
+    if (secctx_u_change != 0)
+    {
         printf("Can't change user context while %d request_ids are in flight.\n", secctx_u_change);
         mutex_unlock(&secctx_u_usage);
         return 1;
@@ -786,11 +865,12 @@ static int cmdline_userctx_shutdown(int argc, char **argv) {
     oscore_context_b1_replay_extract(&context_u, &replaydata);
 
     printf(" %llu", context_u.primitive.sender_sequence_number);
-    if (replaydata.left_edge != OSCORE_SEQNO_MAX) {
+    if (replaydata.left_edge != OSCORE_SEQNO_MAX)
+    {
         // Could be persisted, but the command line interface will refuse
         // loading seqno_max and expect it to be absent
         printf(" %llu", replaydata.left_edge);
-        print_hex(4, (uint8_t*)&replaydata.window);
+        print_hex(4, (uint8_t *)&replaydata.window);
     }
 
     printf("\n\nOnce you entered that, you must not enter it again, but only enter what the running process's output tells you to.\n");
@@ -799,8 +879,10 @@ static int cmdline_userctx_shutdown(int argc, char **argv) {
     return 0;
 }
 
-static int cmdline_notify(int argc, char **argv) {
-    if (argc != 2 || argv[1][0] == '-') {
+static int cmdline_notify(int argc, char **argv)
+{
+    if (argc != 2 || argv[1][0] == '-')
+    {
         printf("Usage: %s off|<word>\n", argv[0]);
         return 1;
     }
@@ -813,7 +895,8 @@ static int cmdline_notify(int argc, char **argv) {
 
     int err;
     err = gcoap_obs_init(&pdu, buf, sizeof(buf), &_resources[0]);
-    if (err != 0) {
+    if (err != 0)
+    {
         printf("Failed to initialize request (probably no observation active)\n");
         return 1;
     }
@@ -822,14 +905,16 @@ static int cmdline_notify(int argc, char **argv) {
     struct observe_option outer_observe;
     uint8_t *outer_observe_ptr;
     oscore_msg_native_from_gcoap_outgoing(&native, &pdu, &outer_observe.length, &outer_observe_ptr);
-    if (outer_observe.length > 0) {
+    if (outer_observe.length > 0)
+    {
         memcpy(outer_observe.data, outer_observe_ptr, outer_observe.length);
     }
 
     oscore_msg_protected_t oscmsg;
     // This is about an obsevation for context B -- FIXME ensure the sender ID only ever gets set for that
     // (or if it's for u, see the secctx_u_change below)
-    if (mutex_trylock(&secctx_b_usage) != 1)  {
+    if (mutex_trylock(&secctx_b_usage) != 1)
+    {
         // Could just as well block, but I prefer this for its clearer error behavior
         printf("Can't send request, security context in use\n");
         return 1;
@@ -843,11 +928,13 @@ static int cmdline_notify(int argc, char **argv) {
     userctx_maybe_persist();
     extern bool observation_id_valid;
     extern oscore_requestid_t observation_id;
-    if (!observation_id_valid) {
+    if (!observation_id_valid)
+    {
         printf("No observation was recorded by the observe1_build handler\n");
         return 1;
     }
-    if (oscore_prepare_response(native, &oscmsg, &secctx_b, &observation_id) != OSCORE_PREPARE_OK) {
+    if (oscore_prepare_response(native, &oscmsg, &secctx_b, &observation_id) != OSCORE_PREPARE_OK)
+    {
         mutex_unlock(&secctx_b_usage);
         printf("Failed to prepare request encryption\n");
         return 1;
@@ -855,18 +942,22 @@ static int cmdline_notify(int argc, char **argv) {
     mutex_unlock(&secctx_b_usage);
 
     size_t text_length = strlen(argv[1]);
-    uint8_t *text = (uint8_t*)argv[1];
+    uint8_t *text = (uint8_t *)argv[1];
 
-    if (text_length == 3 && memcmp(text, "off", 3) == 0) {
+    if (text_length == 3 && memcmp(text, "off", 3) == 0)
+    {
         /* As requested in the plugtest specs; "off" us used as a shorthand as
          * it's readable with a single argument */
-        text = (uint8_t*)"Terminate Observe";
-        text_length = strlen((char*)text);
+        text = (uint8_t *)"Terminate Observe";
+        text_length = strlen((char *)text);
         oscore_msg_protected_set_code(&oscmsg, 0xa0 /* 5.00 Internal Server Error */);
-    } else {
+    }
+    else
+    {
         oscore_msg_protected_set_code(&oscmsg, 0x45 /* 2.05 Content */);
         oscerr = oscore_msg_protected_append_option(&oscmsg, 6 /* Observe */, outer_observe.data, outer_observe.length);
-        if (oscore_msgerr_protected_is_error(oscerr)) {
+        if (oscore_msgerr_protected_is_error(oscerr))
+        {
             printf("Failed to set Observe option\n");
             goto error;
         }
@@ -875,33 +966,38 @@ static int cmdline_notify(int argc, char **argv) {
     uint8_t *payload;
     size_t payload_length;
     oscerr = oscore_msg_protected_map_payload(&oscmsg, &payload, &payload_length);
-    if (oscore_msgerr_protected_is_error(oscerr)) {
+    if (oscore_msgerr_protected_is_error(oscerr))
+    {
         printf("Failed to map payload\n");
         goto error;
     }
 
-    if (payload_length < text_length) {
+    if (payload_length < text_length)
+    {
         printf("Message too short for allocated memory\n");
         goto error;
     }
     memcpy(payload, text, text_length);
 
     oscerr = oscore_msg_protected_trim_payload(&oscmsg, text_length);
-    if (oscore_msgerr_protected_is_error(oscerr)) {
+    if (oscore_msgerr_protected_is_error(oscerr))
+    {
         printf("Unexpected failure to trim payload\n");
         goto error;
     }
 
     oscore_msg_native_t pdu_write_out;
-    if (oscore_encrypt_message(&oscmsg, &pdu_write_out) != OSCORE_FINISH_OK) {
+    if (oscore_encrypt_message(&oscmsg, &pdu_write_out) != OSCORE_FINISH_OK)
+    {
         // see FIXME in oscore_encrypt_message description
         assert(false);
     }
 
     // PDU is usable now again and can be sent
 
-    int bytes_sent = gcoap_obs_send(buf, pdu.payload - (uint8_t*)pdu.hdr + pdu.payload_len, &_resources[0]);
-    if (bytes_sent <= 0) {
+    int bytes_sent = gcoap_obs_send(buf, pdu.payload - (uint8_t *)pdu.hdr + pdu.payload_len, &_resources[0]);
+    if (bytes_sent <= 0)
+    {
         printf("Error sending\n");
     }
     return 0;
@@ -915,13 +1011,16 @@ error:
 // This is a brutally inefficient task as it constantly polls the buttons --
 // but at the same time it is easily portable. Don't run any power measurements
 // while this is running.
-static void *interactive_thread(void *arg) {
+static void *interactive_thread(void *arg)
+{
     (void)arg;
 #ifdef BTN0_PIN
     bool old = false;
-    while (true) {
+    while (true)
+    {
         bool new = !gpio_read(BTN0_PIN);
-        if (new != old) {
+        if (new != old)
+        {
             send_static_request('0' + new);
         };
         old = new;
@@ -945,7 +1044,8 @@ char interactive_thread_stack[THREAD_STACKSIZE_MAIN];
  * used, there is always some reserve in sequence numbers, so cases of actually
  * running out are unlikely.
  * */
-void userctx_maybe_persist(void) {
+void userctx_maybe_persist(void)
+{
     if (!persist->key_good)
         return;
 
@@ -963,32 +1063,33 @@ void userctx_maybe_persist(void) {
 }
 
 static const shell_command_t shell_commands[] = {
-    { "on", "Set the configured OSCORE remote resource to 1", cmdline_on },
-    { "off", "Set the configured OSCORE remote resource to 0", cmdline_off },
-    {"target", "Set the IP and port to which to send on and off requests", cmdline_target },
-    {"userctx", "Reset the user context with new key material", cmdline_userctx },
-    {"userctx-shutdown", "Switch off the user context but allow resuming it later", cmdline_userctx_shutdown },
-    {"notify", "Emit a notification from the /oscore/observe1 resource", cmdline_notify },
-    { NULL, NULL, NULL }
-};
+    {"on", "Set the configured OSCORE remote resource to 1", cmdline_on},
+    {"off", "Set the configured OSCORE remote resource to 0", cmdline_off},
+    {"target", "Set the IP and port to which to send on and off requests", cmdline_target},
+    {"userctx", "Reset the user context with new key material", cmdline_userctx},
+    {"userctx-shutdown", "Switch off the user context but allow resuming it later", cmdline_userctx_shutdown},
+    {"notify", "Emit a notification from the /oscore/observe1 resource", cmdline_notify},
+    {NULL, NULL, NULL}};
 
 int main(void)
 {
     bool flash_valid = persistence_init(&persist);
 
-    if (flash_valid) {
+    if (flash_valid)
+    {
         oscore_context_b1_initialize(&context_u, &persist->key, persist->stored_sequence_number, NULL);
         printf("Loaded data from flash. Target is %s, keys are %s\n",
-                persist->target.port == 0 ? "unset" : "set",
-                persist->key_good ? "valid" : "invalid"
-              );
+               persist->target.port == 0 ? "unset" : "set",
+               persist->key_good ? "valid" : "invalid");
         // Not calling userctx_maybe_persist here, as that would result in a
         // flash write right after power-up. There's no need for that -- when
         // OSCORE traffic arrives or is sent, room will be made in the sequence numbers.
 
         // No need to unlock secctx_u_usage, we didn't grab it in the first
         // place as this is startup code anyway
-    } else {
+    }
+    else
+    {
         printf("No valid data loaded from flash\n");
         persist->target.port = 0;
         persist->key_good = false;
@@ -1004,8 +1105,8 @@ int main(void)
     gcoap_register_listener(&_listener);
 
     thread_create(interactive_thread_stack, sizeof(interactive_thread_stack),
-                            THREAD_PRIORITY_IDLE - 1, THREAD_CREATE_STACKTEST,
-                            interactive_thread, NULL, "interactive");
+                  THREAD_PRIORITY_IDLE - 1, THREAD_CREATE_STACKTEST,
+                  interactive_thread, NULL, "interactive");
 
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
     // larger than usual to accomodate key entry
