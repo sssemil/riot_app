@@ -73,11 +73,25 @@ BENCHMARK_TIME_SUM=${BENCHMARK_RESULTS_ARR[3]}
 FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6" -q | tail -2 | head -1 | cut -d'|' -f 3)
 
 # print results
-echo "================================================================"
-echo "GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS"
-echo "CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT"
-echo "CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT"
-echo "RTT_REPLIES_COUNT: $RTT_REPLIES_COUNT"
-echo "BENCHMARK_TIME_SUM: $BENCHMARK_TIME_SUM"
-echo "FRAME_LEN_SUM: $FRAME_LEN_SUM"
-echo "================================================================"
+cat << EOF
+================================================================
+GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS
+CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT
+CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT
+RTT_REPLIES_COUNT: $RTT_REPLIES_COUNT
+BENCHMARK_TIME_SUM: $BENCHMARK_TIME_SUM
+FRAME_LEN_SUM: $FRAME_LEN_SUM
+================================================================
+EOF
+
+cat >> benchmark_logs.txt << EOF
+================================================================
+GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS
+CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT
+CONFIG_BYTES_COUNT: $CONFIG_BYTES_COUNT
+RTT_REPLIES_COUNT: $RTT_REPLIES_COUNT
+BENCHMARK_TIME_SUM: $BENCHMARK_TIME_SUM
+FRAME_LEN_SUM: $FRAME_LEN_SUM
+================================================================
+EOF
+
