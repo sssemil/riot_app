@@ -10,6 +10,7 @@
 
 /* From the plug test */
 
+RESOURCE(test0, 2, PATH("riot", "test0"), test0_parse, test0_build, struct hello_state)
 RESOURCE(hello, 3, PATH("oscore", "hello", "1"), hello_parse, hello_build, struct hello_state)
 RESOURCE(hello2, 3, PATH("oscore", "hello", "2"), hello2_parse, hello2_build, struct hello_state)
 RESOURCE(hello3, 3, PATH("oscore", "hello", "3"), hello3_parse, hello3_build, struct hello_state)

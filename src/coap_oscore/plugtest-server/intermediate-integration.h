@@ -30,21 +30,26 @@
 
 /** Helper function for writing a simple text into a message, and trimming the message. */
 bool set_message(oscore_msg_protected_t *out, const char *text);
+bool set_message_data(oscore_msg_protected_t *out, uint8_t *data, size_t data_length);
+uint8_t *get_message(oscore_msg_protected_t *in, size_t *payload_length);
 
-struct handler {
+struct handler
+{
     void (*parse)(/* not const because of memoization */ oscore_msg_protected_t *in, void *state);
     void (*build)(oscore_msg_protected_t *in, const void *state, const struct observe_option *outer_observe);
 };
 
-struct dispatcher_choice {
+struct dispatcher_choice
+{
     /** Number of entries in path */
     size_t path_items;
     /** Path components */
-    const char* const *path;
+    const char *const *path;
     struct handler handler;
 };
 
-struct dispatcher_config {
+struct dispatcher_config
+{
     /** Paths available to the dispatcher. Must hold several properties:
      * * Paths with shared prefixes must be grouped by prefix
      * * Resources right at a shared prefix path must come first in the list
@@ -57,7 +62,8 @@ struct dispatcher_config {
      *
      * NULL is sentinel for not found */
     const struct dispatcher_choice *current_choice;
-    union {
+    union
+    {
 #define RESOURCE(name, pathcount, path, handler_parse, handler_build, statetype) statetype name;
 #define PATH(...)
 #include "resources.inc"

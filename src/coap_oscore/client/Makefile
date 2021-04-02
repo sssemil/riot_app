@@ -8,6 +8,13 @@ USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
 
+# Benchmark
+USEMODULE += benchmark
+
+# Benchmark config
+CONFIG_RUNS_COUNT ?= 1
+CONFIG_BYTES_COUNT ?= 4
+
 CFLAGS += -DOSCORE_NANOCOAP_MEMMOVE_MODE
 
 BOARD ?= native
@@ -53,4 +60,3 @@ USEMODULE += gnrc_sock
 USEMODULE += gnrc_ipv6
 
 include $(RIOTBASE)/Makefile.include
-

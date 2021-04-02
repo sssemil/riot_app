@@ -33,6 +33,15 @@ struct hello_state {
     bool options_ok;
 };
 
+struct test0_state {
+    bool code_ok;
+    bool options_ok;
+    uint8_t *payload;
+    size_t payload_length;
+};
+
+void test0_parse(oscore_msg_protected_t *in, void *vstate);
+void test0_build(oscore_msg_protected_t *out, const void *vstate, const struct observe_option *outer_observe);
 void hello_parse(oscore_msg_protected_t *in, void *vstate);
 void hello_build(oscore_msg_protected_t *out, const void *vstate, const struct observe_option *outer_observe);
 void observe1_parse(oscore_msg_protected_t *in, void *vstate);

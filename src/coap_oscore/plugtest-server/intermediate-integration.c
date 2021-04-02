@@ -11,20 +11,53 @@ bool set_message(oscore_msg_protected_t *out, const char *text)
     size_t payload_length;
     size_t printed = 0;
     oscore_msgerr_native_t err = oscore_msg_protected_map_payload(out, &payload, &payload_length);
-    if (oscore_msgerr_protected_is_error(err)) {
+    if (oscore_msgerr_protected_is_error(err))
+    {
         return false;
     }
 
-    printed = snprintf((char*)payload, payload_length, "%s", text);
-    if (printed > payload_length) {
+    printed = snprintf((char *)payload, payload_length, "%s", text);
+    if (printed > payload_length)
+    {
         return false;
     }
     err = oscore_msg_protected_trim_payload(out, printed);
-    if (oscore_msgerr_protected_is_error(err)) {
+    if (oscore_msgerr_protected_is_error(err))
+    {
         return false;
     }
 
     return true;
+}
+
+bool set_message_data(oscore_msg_protected_t *out, uint8_t *data, size_t data_length)
+{
+    uint8_t *payload;
+    size_t payload_length;
+    oscore_msgerr_native_t err = oscore_msg_protected_map_payload(out, &payload, &payload_length);
+    if (oscore_msgerr_protected_is_error(err))
+    {
+        return false;
+    }
+
+    memcpy(payload, data, data_length);
+
+    err = oscore_msg_protected_trim_payload(out, data_length);
+    if (oscore_msgerr_protected_is_error(err))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+uint8_t *get_message(oscore_msg_protected_t *in, size_t *payload_length)
+{
+    uint8_t *payload;
+
+    oscore_msg_protected_map_payload(in, &payload, payload_length);
+
+    return payload;
 }
 
 void dispatcher_parse(oscore_msg_protected_t *in, void *vstate)
@@ -41,18 +74,21 @@ void dispatcher_parse(oscore_msg_protected_t *in, void *vstate)
     const uint8_t *opt_val;
     size_t opt_len;
     oscore_msg_protected_optiter_init(in, &iter);
-    while (oscore_msg_protected_optiter_next(in, &iter, &opt_num, &opt_val, &opt_len)) {
-        if (opt_num == 11 /* Uri-Path */) {
+    while (oscore_msg_protected_optiter_next(in, &iter, &opt_num, &opt_val, &opt_len))
+    {
+        if (opt_num == 11 /* Uri-Path */)
+        {
             while (path_depth == config->current_choice->path_items /* no additional path component accepted */ ||
-                    strlen(config->current_choice->path[path_depth]) != opt_len /* or the new one doesn't fit */ ||
-                    memcmp(config->current_choice->path[path_depth], opt_val, opt_len) != 0)
+                   strlen(config->current_choice->path[path_depth]) != opt_len /* or the new one doesn't fit */ ||
+                   memcmp(config->current_choice->path[path_depth], opt_val, opt_len) != 0)
             {
                 // Current item is not suitable, try advancing or break with error
                 const struct dispatcher_choice *next = config->current_choice + 1;
                 if (next->path_items == 0 /* reached the end of the list */ ||
-                        next->path_items < path_depth /* already used path is certainly not a shared prefix */ ||
-                        memcmp(next->path, config->current_choice->path, path_depth * sizeof(char **)) != 0 /* already used path is not a shared prefix */
-                    ) {
+                    next->path_items < path_depth /* already used path is certainly not a shared prefix */ ||
+                    memcmp(next->path, config->current_choice->path, path_depth * sizeof(char **)) != 0 /* already used path is not a shared prefix */
+                )
+                {
                     config->current_choice = NULL;
                     return;
                 }
@@ -65,7 +101,8 @@ void dispatcher_parse(oscore_msg_protected_t *in, void *vstate)
         }
     }
 
-    if (path_depth != config->current_choice->path_items) {
+    if (path_depth != config->current_choice->path_items)
+    {
         // Path fits but we'd have expected more path options
         config->current_choice = NULL;
         return;
@@ -76,10 +113,12 @@ void dispatcher_parse(oscore_msg_protected_t *in, void *vstate)
     config->current_choice->handler.parse(in, data);
 }
 
-void dispatcher_build(oscore_msg_protected_t *out, const void *vstate, const struct observe_option *outer_observe) {
+void dispatcher_build(oscore_msg_protected_t *out, const void *vstate, const struct observe_option *outer_observe)
+{
     const struct dispatcher_config *config = vstate;
 
-    if (config->current_choice == NULL) {
+    if (config->current_choice == NULL)
+    {
         oscore_msg_protected_set_code(out, 0x84 /* 4.04 Not Found */);
         oscore_msg_protected_trim_payload(out, 0);
         return;
@@ -89,24 +128,26 @@ void dispatcher_build(oscore_msg_protected_t *out, const void *vstate, const str
     config->current_choice->handler.build(out, data, outer_observe);
 }
 
-#define RESOURCE(name, pathcount, path, handler_parse, handler_build, statetype) static const char* const name[pathcount] = path;
-#define PATH(...) { __VA_ARGS__ }
+#define RESOURCE(name, pathcount, path, handler_parse, handler_build, statetype) static const char *const name[pathcount] = path;
+#define PATH(...)   \
+    {               \
+        __VA_ARGS__ \
+    }
 #include "resources.inc"
 #undef RESOURCE
 #undef PATH
 static struct dispatcher_choice plugtest_choices[] = {
-#define RESOURCE(name, pathcount, path, handler_parse, handler_build, statetype) { pathcount, name, { handler_parse, handler_build } },
+#define RESOURCE(name, pathcount, path, handler_parse, handler_build, statetype) {pathcount, name, {handler_parse, handler_build}},
 #define PATH(...)
 #include "resources.inc"
 #undef RESOURCE
 #undef PATH
-    { 0, NULL, { NULL, NULL } },
+    {0, NULL, {NULL, NULL}},
 };
-static struct dispatcher_config  plugtest_config = {
+static struct dispatcher_config plugtest_config = {
     .choices = plugtest_choices,
     // state is initialized for whatever is just parsing
 };
-
 
 ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
 {
@@ -122,14 +163,16 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
     // This is nanocoap's shortcut (compare to unprotect-demo, where we iterate through the outer options)
     uint8_t *header_data;
     ssize_t header_size = coap_opt_get_opaque(pdu, 9, &header_data);
-    if (header_size < 0) {
+    if (header_size < 0)
+    {
         errormessage = "No OSCORE option found";
         // Having a </> resource in parallel to OSCORE is not supported here.
         errorcode = COAP_CODE_PATH_NOT_FOUND;
         goto error;
     }
     bool parsed = oscore_oscoreoption_parse(&header, header_data, header_size);
-    if (!parsed) {
+    if (!parsed)
+    {
         errormessage = "OSCORE option unparsable";
         errorcode = COAP_CODE_BAD_OPTION;
         goto error;
@@ -142,44 +185,48 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
     oscore_context_t *secctx;
     // FIXME accessing private fields without accessor
     if (header.kid_context != NULL &&
-            header.kid_context_len == 8 &&
-            memcmp(header.kid_context, "\x37\xcb\xf3\x21\x00\x17\xa2\xd3", 8) == 0 &&
-            header.kid != NULL &&
-            header.kid_len == 0
-            // && memcmp(header.kid, "", 0) == 0
-            )
+        header.kid_context_len == 8 &&
+        memcmp(header.kid_context, "\x37\xcb\xf3\x21\x00\x17\xa2\xd3", 8) == 0 &&
+        header.kid != NULL &&
+        header.kid_len == 0
+        // && memcmp(header.kid, "", 0) == 0
+    )
     {
         secctx = &secctx_d;
         secctx_lock = &secctx_d_usage;
-    } else if (
-            header.kid_context == NULL &&
-            header.kid != NULL &&
-            header.kid_len == 0
-            // && memcmp(header.kid, "", 0) == 0
-            )
+    }
+    else if (
+        header.kid_context == NULL &&
+        header.kid != NULL &&
+        header.kid_len == 0
+        // && memcmp(header.kid, "", 0) == 0
+    )
     {
         secctx = &secctx_b;
         secctx_lock = &secctx_b_usage;
-    } else if (
-            // Strictly speaking this is racing against changesin he context
-            // protected by secctx_u_change, but only until it's locked (or
-            // denied) a few lines later -- what could possibly go wrong?
-            // (FIXME as always after these words)
-            persist->key_good &&
-            header.kid != NULL &&
-            header.kid_len == persist->key.recipient_id_len &&
-            memcmp(header.kid, &persist->key.recipient_id, persist->key.recipient_id_len) == 0
-            )
+    }
+    else if (
+        // Strictly speaking this is racing against changesin he context
+        // protected by secctx_u_change, but only until it's locked (or
+        // denied) a few lines later -- what could possibly go wrong?
+        // (FIXME as always after these words)
+        persist->key_good &&
+        header.kid != NULL &&
+        header.kid_len == persist->key.recipient_id_len &&
+        memcmp(header.kid, &persist->key.recipient_id, persist->key.recipient_id_len) == 0)
     {
         secctx = &secctx_u;
         secctx_lock = &secctx_u_usage;
-    } else {
+    }
+    else
+    {
         errormessage = "No security context found";
         errorcode = COAP_CODE_UNAUTHORIZED;
         goto error;
     }
 
-    if (mutex_trylock(secctx_lock) != 1) {
+    if (mutex_trylock(secctx_lock) != 1)
+    {
         errormessage = "Security context in use";
         // FIXME add Max-Age: 0
         errorcode = COAP_CODE_SERVICE_UNAVAILABLE;
@@ -187,7 +234,8 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
         goto error;
     }
 
-    if (secctx_lock == &secctx_u_usage) {
+    if (secctx_lock == &secctx_u_usage)
+    {
         secctx_u_change += 1;
 
         // Give the persistence layer a chance to allocate numbers that'll be
@@ -198,13 +246,12 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
 
     oscerr = oscore_unprotect_request(pdu_read, &incoming_decrypted, header, secctx, &request_id);
 
-    bool respond_401echo = secctx_lock == &secctx_u_usage && \
-            oscore_context_b1_process_request(
-                    secctx,
-                    &incoming_decrypted,
-                    &oscerr,
-                    &request_id
-                    );
+    bool respond_401echo = secctx_lock == &secctx_u_usage &&
+                           oscore_context_b1_process_request(
+                               secctx,
+                               &incoming_decrypted,
+                               &oscerr,
+                               &request_id);
 
     mutex_unlock(secctx_lock);
 
@@ -214,11 +261,15 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
     // ensures that there are K/2 numbers left, the above invocation suffices.
     // if (secctx_lock == &secctx_u_usage) userctx_maybe_persist();
 
-    if (!respond_401echo && oscerr != OSCORE_UNPROTECT_REQUEST_OK) {
-        if (oscerr == OSCORE_UNPROTECT_REQUEST_DUPLICATE) {
+    if (!respond_401echo && oscerr != OSCORE_UNPROTECT_REQUEST_OK)
+    {
+        if (oscerr == OSCORE_UNPROTECT_REQUEST_DUPLICATE)
+        {
             errormessage = "Unprotect failed, it's a duplicate";
             errorcode = COAP_CODE_UNAUTHORIZED;
-        } else {
+        }
+        else
+        {
             errormessage = "Unprotect failed";
             errorcode = COAP_CODE_BAD_REQUEST;
         }
@@ -243,25 +294,31 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
 
     uint8_t *outer_observe_ptr;
     oscore_msg_native_from_gcoap_outgoing(&pdu_write, pdu, &outer_observe.length, &outer_observe_ptr);
-    if (outer_observe.length > 0) {
+    if (outer_observe.length > 0)
+    {
         memcpy(outer_observe.data, outer_observe_ptr, outer_observe.length);
     }
 
     oscore_msg_protected_t outgoing_plaintext;
-    if (mutex_trylock(secctx_lock) != 1) {
+    if (mutex_trylock(secctx_lock) != 1)
+    {
         errormessage = "Context not available for response";
         errorcode = COAP_CODE_SERVICE_UNAVAILABLE;
         goto error;
     }
-    if (respond_401echo) {
+    if (respond_401echo)
+    {
         if (oscore_context_b1_build_401echo(
-                    pdu_write,
-                    secctx,
-                    &request_id)) {
+                pdu_write,
+                secctx,
+                &request_id))
+        {
             secctx_u_change -= 1;
             mutex_unlock(secctx_lock);
             return (pdu->payload - buf) + pdu->payload_len;
-        } else {
+        }
+        else
+        {
             errormessage = "Failed to build 4.01 response";
             errorcode = COAP_CODE_SERVICE_UNAVAILABLE;
             mutex_unlock(secctx_lock);
@@ -269,11 +326,13 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
         }
     }
     oscerr2 = oscore_prepare_response(pdu_write, &outgoing_plaintext, secctx, &request_id);
-    if (secctx_lock == &secctx_u_usage) {
+    if (secctx_lock == &secctx_u_usage)
+    {
         secctx_u_change -= 1;
     }
     mutex_unlock(secctx_lock);
-    if (oscerr2 != OSCORE_PREPARE_OK) {
+    if (oscerr2 != OSCORE_PREPARE_OK)
+    {
         errormessage = "Context not usable";
         errorcode = COAP_CODE_SERVICE_UNAVAILABLE;
         goto error;
@@ -287,7 +346,8 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
     enum oscore_finish_result oscerr4;
     oscore_msg_native_t pdu_write_out;
     oscerr4 = oscore_encrypt_message(&outgoing_plaintext, &pdu_write_out);
-    if (oscerr4 != OSCORE_FINISH_OK) {
+    if (oscerr4 != OSCORE_FINISH_OK)
+    {
         errormessage = "Error finishing";
         // FIXME verify that this truncates the response
         goto error;
@@ -298,7 +358,8 @@ ssize_t oscore_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, void *ctx)
     return (pdu->payload - buf) + pdu->payload_len;
 
 error:
-    if (secctx_lock == &secctx_u_usage) {
+    if (secctx_lock == &secctx_u_usage)
+    {
         // Rather block the Gcoap thread than making secctx_u unchangable for good
         mutex_lock(&secctx_u_usage);
         secctx_u_change -= 1;
