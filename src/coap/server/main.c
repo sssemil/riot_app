@@ -96,7 +96,7 @@ static ssize_t _riot_test0_handler(coap_pkt_t *pdu, uint8_t *buf, size_t len, vo
     size_t resp_len = coap_opt_finish(pdu, COAP_OPT_FINISH_PAYLOAD);
 
     memset(pdu->payload, 'a', payload_len);
-    pdu->payload[payload_len - 1] = 0;
+    //pdu->payload[payload_len - 1] = 0;
     payload_uint32_ptr = (uint32_t *)pdu->payload;
     *payload_uint32_ptr = departure_time;
 

@@ -1,0 +1,82 @@
+Building application "test_plugtest_server" for "native" with MCU "native".
+
+"make" -C /home/emil/Documents/riot_app/RIOT/pkg/hacl
+"make" -C /home/emil/Documents/riot_app/RIOT/build/pkg/hacl -f /home/emil/Documents/riot_app/RIOT/Makefile.base
+"make" -C /home/emil/Documents/riot_app/RIOT/pkg/libcose
+"make" -C /home/emil/Documents/riot_app/RIOT/build/pkg/libcose/src -f /home/emil/Documents/riot_app/RIOT/Makefile.base MODULE=libcose
+"make" -C /home/emil/Documents/riot_app/RIOT/build/pkg/libcose/src/crypt -f /home/emil/Documents/riot_app/RIOT/pkg/libcose/Makefile.libcose_crypt
+"make" -C /home/emil/Documents/riot_app/RIOT/pkg/nanocbor
+"make" -C /home/emil/Documents/riot_app/RIOT/build/pkg/nanocbor/src -f /home/emil/Documents/riot_app/RIOT/Makefile.base MODULE=nanocbor
+"make" -C /home/emil/Documents/riot_app/RIOT/boards/native
+"make" -C /home/emil/Documents/riot_app/RIOT/boards/native/drivers
+"make" -C /home/emil/Documents/riot_app/RIOT/core
+"make" -C /home/emil/Documents/riot_app/RIOT/cpu/native
+"make" -C /home/emil/Documents/riot_app/RIOT/cpu/native/netdev_tap
+"make" -C /home/emil/Documents/riot_app/RIOT/cpu/native/periph
+"make" -C /home/emil/Documents/riot_app/RIOT/cpu/native/stdio_native
+"make" -C /home/emil/Documents/riot_app/RIOT/drivers
+"make" -C /home/emil/Documents/riot_app/RIOT/drivers/netdev
+"make" -C /home/emil/Documents/riot_app/RIOT/drivers/periph_common
+"make" -C /home/emil/Documents/riot_app/RIOT/sys
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/auto_init
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/div
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/event
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/evtimer
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/fmt
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/iolist
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/luid
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/application_layer/gcoap
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/application_layer/nanocoap
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/crosslayer/inet_csum
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netapi
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netif
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netif/ethernet
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netif/hdr
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netif/init_devs
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/netreg
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/icmpv6
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/icmpv6/echo
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/ipv6
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/ipv6/hdr
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/ipv6/nib
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/network_layer/ndp
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/pkt
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/pktbuf
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/pktbuf_static
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/sock
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/sock/udp
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/gnrc/transport_layer/udp
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/link_layer/eui_provider
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/link_layer/l2util
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/netif
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/network_layer/icmpv6
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/network_layer/ipv6/addr
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/network_layer/ipv6/hdr
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/sock
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/sock/async/event
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/net/transport_layer/udp
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/posix/inet
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/ps
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/random
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/random/tinymt32
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/shell
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/shell/commands
+"make" -C /home/emil/Documents/riot_app/RIOT/sys/xtimer
+"make" -C /home/emil/Documents/riot_app/liboscore/backends/riot-module
+/usr/bin/ld: /home/emil/Documents/riot_app/src/coap_oscore/plugtest-server/bin/native/cpu/tramp.o: warning: relocation against `_native_saved_eip' in read-only section `.text'
+/usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+   text	   data	    bss	    dec	    hex	filename
+ 295743	   2512	 106996	 405251	  62f03	/home/emil/Documents/riot_app/src/coap_oscore/plugtest-server/bin/native/test_plugtest_server.elf
+/home/emil/Documents/riot_app/src/coap_oscore/plugtest-server/bin/native/test_plugtest_server.elf tap0 
+RIOT native interrupts/signals initialized.
+LED_RED_OFF
+LED_GREEN_ON
+RIOT native board initialized.
+RIOT native hardware initialization complete.
+
+main(): This is RIOT! (Version: 2021.04-devel-458-g83fbd)
+No valid data loaded from flash
+Running OSCORE plugtest server
+> 
+native: exiting

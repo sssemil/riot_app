@@ -10,8 +10,6 @@ USEMODULE += ps
 
 CFLAGS += -DOSCORE_NANOCOAP_MEMMOVE_MODE
 
-BOARD ?= native
-
 # The +1500 it's still a but much for my taste, and I should confirm my suspicion about
 # most of it being the crypto library at some point.
 CFLAGS += -DGCOAP_STACK_SIZE="THREAD_STACKSIZE_DEFAULT + DEBUG_EXTRA_STACKSIZE + sizeof(coap_pkt_t) + 1500"
@@ -33,7 +31,7 @@ DEVELHELP ?= 1
 # pedantic Werrors to show up in RIOT source; gnu11 seems to ignore those.
 CFLAGS += -std=gnu11
 
-EXTERNAL_MODULE_DIRS += $(abspath ../../../..)/liboscore/backends/riot-module
+EXTERNAL_MODULE_DIRS += $(abspath ../../../)/liboscore/backends/riot-module
 USEMODULE += oscore
 
 # Pick a backend; without, no algorithms are available

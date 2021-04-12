@@ -291,10 +291,10 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
 
     oscore_msg_native_t native = {.pkt = &pdu};
 
-    oscore_crypto_aeadalg_t aeadalg = oscore_context_get_aeadalg(&secc_b);
-    size_t tag_length = oscore_crypto_aead_get_taglength(aeadalg);
-    printf("aeadalg tag_length: %i\n", tag_length);
-    printf("aeadalg: %i\n", aeadalg);
+    // oscore_crypto_aeadalg_t aeadalg = oscore_context_get_aeadalg(&secc_b);
+    // size_t tag_length = oscore_crypto_aead_get_taglength(aeadalg);
+    // printf("aeadalg tag_length: %i\n", tag_length);
+    // printf("aeadalg: %i\n", aeadalg);
 
     if (oscmsg.flags & OSCORE_MSG_PROTECTED_FLAG_REQUEST)
         printf("is_request: true\n");
@@ -315,7 +315,7 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
     oscore_msg_protected_set_code(&oscmsg, COAP_GET);
 
     oscore_msgerr_protected_t oscerr;
-    oscerr = oscore_msg_protected_append_option(&oscmsg, COAP_OPT_URI_PATH, (uint8_t *)"temperature", 11);
+    oscerr = oscore_msg_protected_append_option(&oscmsg, COAP_OPT_URI_PATH, (uint8_t *)"/riot/test0", 11);
     if (oscore_msgerr_protected_is_error(oscerr))
     {
         printf("error;Failed to add option\n");
@@ -365,7 +365,7 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
     //request_id.sctx = (void *)secc;
 
     printf("request_id.used_bytes: %i\n", request_id.used_bytes);
-    buf[6] = 0x92;
+    //buf[6] = 0x92;
 
     if (oscmsg.flags & OSCORE_MSG_PROTECTED_FLAG_REQUEST)
         printf("is_request: true\n");

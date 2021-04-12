@@ -21,7 +21,7 @@ ssize_t plugtest_nonoscore_hello(coap_pkt_t *pdu, uint8_t *buf, size_t len, void
  * respective bit set in expected_options, and dump the options on stdout in
  * either case. (expected_options can't be -1). */
 static bool options_are_as_expected(oscore_msg_protected_t *msg, uint64_t expected_options)
-{   
+{
     uint64_t seen = 0;
 
     oscore_msg_protected_optiter_t iter;
@@ -88,20 +88,15 @@ static bool options_are_as_expected(oscore_msg_protected_t *msg, uint64_t expect
 }*/
 
 void test0_parse(oscore_msg_protected_t *in, void *vstate)
-{    
+{
     struct test0_state *state = vstate;
     //state->options_ok = options_are_as_expected(in, 1 << 11 /* Uri-Path */);
     //state->code_ok = oscore_msg_protected_get_code(in) == 1 /* GET */;
 
     size_t payload_length;
     uint8_t *payload = get_message(in, &payload_length);
-
-    //printf("%.*s\n", payload_length, (char *)payload);
-
-    uint8_t *payload_new = (uint8_t *)malloc(sizeof(uint8_t) * payload_length);
-    memcpy(payload_new, payload, payload_length);
-
-    state->payload = payload_new;
+    uint32_t *payload_uint32_ptr = (uint32_t *)payload;
+    state->departure_time = *payload_uint32_ptr;
     state->payload_length = payload_length;
 }
 
@@ -122,14 +117,29 @@ void test0_build(oscore_msg_protected_t *out, const void *vstate, const struct o
     if (oscore_msgerr_protected_is_error(err))
         goto error;
 
-    if (!set_message_data(out, state->payload, state->payload_length))
+    uint8_t *payload;
+    size_t payload_length;
+    oscore_msgerr_native_t err2 = oscore_msg_protected_map_payload(out, &payload, &payload_length);
+    if (oscore_msgerr_protected_is_error(err2))
+    {
         goto error;
+    }
+
+    memset(payload, 'a', state->payload_length);
+    uint32_t *payload_uint32_ptr = (uint32_t *)payload;
+    *payload_uint32_ptr = state->departure_time;
+
+    err2 = oscore_msg_protected_trim_payload(out, state->payload_length);
+    if (oscore_msgerr_protected_is_error(err2))
+    {
+        goto error;
+    }
 
     return;
 
 error:
     oscore_msg_protected_set_code(out, 0xa0 /* 5.00 internal error */);
-//error2:
+    //error2:
     // not unwinding any option, there's no API for that and it doesn't really matter
     //oscore_msg_protected_trim_payload(out, 0);
 }

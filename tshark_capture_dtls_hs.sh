@@ -73,7 +73,7 @@ RTT_REPLIES_COUNT=${BENCHMARK_RESULTS_ARR[2]}
 BENCHMARK_TIME_SUM=${BENCHMARK_RESULTS_ARR[3]}
 
 # analyse tshark capture
-FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6" -q | tail -2 | head -1 | cut -d'|' -f 3)
+FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6 and (dtls.record.content_type == 22 or dtls.record.content_type == 20) and frame.len != 93" -q | tail -2 | head -1 | cut -d'|' -f 3)
 
 # print results
 cat << EOF

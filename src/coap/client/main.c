@@ -48,6 +48,7 @@ static const credman_credential_t credential = {
 #endif
 
 uint32_t benchmark_time_sum = 0;
+uint32_t benchmark_send_time_sum = 0;
 uint32_t rtt_replies_count = 0;
 
 static void _resp_handler(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
@@ -235,7 +236,7 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
 #endif
 
     coap_hdr_set_type(pdu.hdr, COAP_TYPE_CON);
-    coap_opt_add_format(&pdu, COAP_FORMAT_JSON);
+    //coap_opt_add_format(&pdu, COAP_FORMAT_JSON);
     len += coap_opt_finish(&pdu, COAP_OPT_FINISH_PAYLOAD);
 
 #if VERBOSE
@@ -264,7 +265,14 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
 
         gcoap_req_send((uint8_t *)pdu.hdr, len, remote,
                        _resp_handler, NULL);
-        usleep(50 * 1000);
+
+        benchmark_send_time_sum += xtimer_now_usec() - *payload_uint32_ptr;
+        usleep(150 * 1000);
+#if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS_HS)
+        printf("dsm_remove_all: pre\n");
+        dsm_remove_all();
+        printf("dsm_remove_all: post\n");
+#endif
     }
 
     return 0;
@@ -297,20 +305,24 @@ int main(void)
 
     benchmark_time_sum = 0;
     rtt_replies_count = 0;
+    benchmark_send_time_sum = 0;
 
     gcoap_test0(server_addr_str, payload_length, runs);
 
     // wait for the "rest" of the replies
-    do
-    {
-        printf("rtt_replies_count: %i\n", rtt_replies_count);
-        usleep(1000 * 1000);
-    } while (rtt_replies_count < runs - (runs / 10));
+    //do
+    //{
+    printf("rtt_replies_count: %i\n", rtt_replies_count);
+    usleep(1000 * 1000);
+    //} while (rtt_replies_count < runs - (runs / 10));
 
-    benchmark_print_time(benchmark_time_sum, rtt_replies_count, "coap_rtt");
+    //benchmark_print_time(benchmark_time_sum, rtt_replies_count, "coap_rtt");
+    //benchmark_print_time(benchmark_send_time_sum, runs, "coap_send");
+    (void)benchmark_send_time_sum;
 
     // clean output for the analysis script
     fprintf(stderr, "rtt_replies_count benchmark_time_sum\n%i %i", rtt_replies_count, benchmark_time_sum);
+    //fprintf(stderr, "rtt_replies_count benchmark_time_sum\n%i %i", runs, benchmark_send_time_sum);
 
     exit(0);
     return 0;

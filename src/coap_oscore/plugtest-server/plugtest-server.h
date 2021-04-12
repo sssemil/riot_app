@@ -36,7 +36,7 @@ struct hello_state {
 struct test0_state {
     bool code_ok;
     bool options_ok;
-    uint8_t *payload;
+    uint32_t departure_time;
     size_t payload_length;
 };
 

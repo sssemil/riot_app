@@ -32,15 +32,13 @@ APPLICATION ?= test_$(notdir $(subst -,_,$(patsubst %/,%,$(CURDIR))))
 
 RIOTBASE ?= $(CURDIR)/../../../RIOT
 
-BOARD ?= native
-
 DEVELHELP ?= 1
 
 # C11 features are accepted in the OSCORE implementation, but that causes
 # pedantic Werrors to show up in RIOT source; gnu11 seems to ignore those.
 CFLAGS += -std=gnu11
 
-EXTERNAL_MODULE_DIRS += $(abspath ../../../..)/liboscore/backends/riot-module
+EXTERNAL_MODULE_DIRS += $(abspath ../../../)/liboscore/backends/riot-module
 USEMODULE += oscore
 
 # Pick a backend; without, no algorithms are available
