@@ -1,0 +1,6 @@
+{
+  "algorithm": "ChaCha20/Poly1305",
+
+  "sender-id_hex": "",
+  "recipient-id_hex": "01"
+}
