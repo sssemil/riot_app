@@ -48,13 +48,10 @@ sleep 2
 # start client
 cd src/coap/client
 
-{
-    IFS=$'\n' read -r -d '' CLIENT_OUTPUT
-    IFS=$'\n' read -r -d '' CLIENT_OUTPUT_STDOUT
-} < <((printf '\0%s\0' "$(PORT=tap1 make term)" 1>&2) 2>&1)
-
-echo $CLIENT_OUTPUT_STDOUT
-echo $CLIENT_OUTPUT
+PORT=tap1 watch -n1 make term&
+CMTPID=$!
+echo $CMTPID
+wait $CMTPID
 
 cd ../../../
 
@@ -68,12 +65,8 @@ kill $server_pid
 # get result out
 sleep 5
 
-BENCHMARK_RESULTS_ARR=($CLIENT_OUTPUT)
-RTT_REPLIES_COUNT=${BENCHMARK_RESULTS_ARR[2]}
-BENCHMARK_TIME_SUM=${BENCHMARK_RESULTS_ARR[3]}
-
 # analyse tshark capture
-FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6 and (dtls.record.content_type == 22 or dtls.record.content_type == 20) and frame.len != 93" -q | tail -2 | head -1 | cut -d'|' -f 3)
+FRAME_LEN_SUM=$(tshark -r ${CONFIG_RUNS_COUNT}_runs-${CONFIG_BYTES_COUNT}-bytes-coap-dtls_${GCOAP_ENABLE_DTLS}.pcapng -z io,stat,0,"SUM(frame.len)frame.len && not icmpv6" -q | tail -2 | head -1 | cut -d'|' -f 3)
 
 # print results
 cat << EOF
@@ -87,7 +80,7 @@ FRAME_LEN_SUM: $FRAME_LEN_SUM
 ================================================================
 EOF
 
-cat >> benchmark_logs.txt << EOF
+cat >> special_benchmark_logs.txt << EOF
 ================================================================
 GCOAP_ENABLE_DTLS: $GCOAP_ENABLE_DTLS
 CONFIG_RUNS_COUNT: $CONFIG_RUNS_COUNT

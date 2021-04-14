@@ -98,7 +98,7 @@ FRAME_LEN_SUM: $FRAME_LEN_SUM
 ================================================================
 EOF
 
-cat >> special_benchmark_logs.csv << EOF
+cat >> benchmark_logs.csv << EOF
 $GCOAP_ENABLE_DTLS	$CONFIG_RUNS_COUNT	$CONFIG_BYTES_COUNT	$RTT_REPLIES_COUNT	$BENCHMARK_TIME_SUM	$FRAME_LEN_SUM
 EOF
 

@@ -10,6 +10,8 @@ ACK_LEN=$3
 CON_LEN_UPPER=$(echo "($CON_LEN+8)"| bc -l)
 ACK_LEN_UPPER=$(echo "($ACK_LEN+8)"| bc -l)
 
+#(frame.len == 129 and dtls.record.content_type == 22) or (frame.len == 77 and dtls.record.content_type == 21)
+
 tshark -r ${INPUT}.pcapng -Y "(dtls.handshake.type == 1 and frame.len == 129) or (dtls.record.content_type == 23 and (frame.len >= $CON_LEN and frame.len <= $CON_LEN_UPPER))" -w tmp.pcap -F pcap
 tshark -r tmp.pcap -Y "(dtls.record.content_type == 23 and (frame.len >= $CON_LEN and frame.len <= $CON_LEN_UPPER))" -T fields -e frame.time_delta > ${INPUT}_ACK_DELTA.csv
 

@@ -267,11 +267,9 @@ int gcoap_test0(char *server_addr_str, size_t payload_length, size_t runs)
                        _resp_handler, NULL);
 
         benchmark_send_time_sum += xtimer_now_usec() - *payload_uint32_ptr;
-        usleep(150 * 1000);
+        usleep(500 * 1000);
 #if IS_ACTIVE(CONFIG_GCOAP_ENABLE_DTLS_HS)
-        printf("dsm_remove_all: pre\n");
         dsm_remove_all();
-        printf("dsm_remove_all: post\n");
 #endif
     }
 
@@ -310,15 +308,14 @@ int main(void)
     gcoap_test0(server_addr_str, payload_length, runs);
 
     // wait for the "rest" of the replies
-    //do
-    //{
-    printf("rtt_replies_count: %i\n", rtt_replies_count);
-    usleep(1000 * 1000);
-    //} while (rtt_replies_count < runs - (runs / 10));
+    do
+    {
+        printf("rtt_replies_count: %i\n", rtt_replies_count);
+        usleep(1000 * 1000);
+    } while (rtt_replies_count < runs / 2);
 
     //benchmark_print_time(benchmark_time_sum, rtt_replies_count, "coap_rtt");
     //benchmark_print_time(benchmark_send_time_sum, runs, "coap_send");
-    (void)benchmark_send_time_sum;
 
     // clean output for the analysis script
     fprintf(stderr, "rtt_replies_count benchmark_time_sum\n%i %i", rtt_replies_count, benchmark_time_sum);
